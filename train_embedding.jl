@@ -41,18 +41,20 @@ diet_df = DataFrame(load("data.csv"))
 
 """
 `embedder(x,y)`
-Returns a vector `outp` of strings of the 
+y should be a WordVectors{String, Float64, Int64}
+x will be an long string
+Returns a vector `outp` of floats of the embeddings of words from `x` in the embedding `y`
+This should return a vector of floats.  This has variable length, depending on the length of x.
 """
 function embedder(x,y)
-	outp = ""
-	for wd in 1:10
-		outp = outp*" "*y.words[wd]
+	outp = Vector{Float64}()         # empty arrray
+	for wd in split(x)               # split the string input
+		if haskey( y.vocab_hash, wd) # need to catch key errors, I guess?
+			push!(outp, y.vectors[y.vocab_hash[wd]])
+		end
 	end
 	return outp
 end
-
-
-
 
 
 outp = Dict(string(i) => )
