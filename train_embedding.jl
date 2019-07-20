@@ -64,7 +64,7 @@ end
 
 # produces the file diet_embed
 	word2vec("diet_text.txt", "diet_embed", verbose=true)
-	# not many words - 395 unique, 55,000 total.
+	# not many words - 347 unique, 61,000 total.
 # Load the embeddings
 	embed_1 = wordvectors("./diet_embed")
 # Load the data to write some vectors of embedded words

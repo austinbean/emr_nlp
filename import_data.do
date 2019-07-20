@@ -16,11 +16,32 @@ labeled data can then be used for training
 import excel "/Users/austinbean/Desktop/programs/emr_nlp/String Search Diet 20101102.xls", sheet("Formula") firstrow clear
 
 
+************
+* CLEAN UP
+************
+
+* remove some useless strings and punctuation.
+	replace string_text_diet = subinstr(string_text_diet, "DIET:", "DIET", .)
+	replace string_text_diet = subinstr(string_text_diet, ":", " ", .)
+	replace string_text_diet = subinstr(string_text_diet, ",", "", .)
+	replace string_text_diet = subinstr(string_text_diet, "--", " ", .)
+	replace string_text_diet = subinstr(string_text_diet, "-", " TO ", .)
+	replace string_text_diet = subinstr(string_text_diet, ".", "", .)
+	replace string_text_diet = subinstr(string_text_diet, ";", "", .)
+	replace string_text_diet = subinstr(string_text_diet, "+", "", .)
+	replace string_text_diet = subinstr(string_text_diet, "(", "", .)
+	replace string_text_diet = subinstr(string_text_diet, ")", "", .)
+	replace string_text_diet = subinstr(string_text_diet, "&", "AND", .)
+
+
 
 * Work with a duplicate of string_text_diet
 
 gen diet = string_text_diet
 browse diet
+
+
+
 
 ********
 * replace all text number strings with the number...
