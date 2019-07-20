@@ -1,0 +1,179 @@
+---
+title : Recurrent Neural Network
+author : Austin Bean
+date : 06/20/2019
+---
+
+
+# nn notes
+
+<!-- idea: write in JMD to produce PDF via command below, but convert to ipynb to make executable notebook. -->
+<!-- in principle notebook may be more important so probably worth writing that first... -->
+<!-- see: https://jupyter-notebook.readthedocs.io/en/stable/examples/Notebook/Working%20With%20Markdown%20Cells.html -->
+<!--from within the directory: weave(joinpath(pwd(), "nn_notes.jmd"), out_path=:pwd, doctype="md2pdf")-->
+<!-- convert to ipynb: convert_doc("nn_notes.jmd", "nn_notes.ipynb") -->
+<!-- http://weavejl.mpastell.com/stable/notebooks/#Output-to-Jupyter-notebooks-1 -->
+<!--
+This can run within the Jupyter environment after conversion using the function above
+Requires:
+- install anaconda
+- install IJulia
+- from within Julia, run:
+using IJulia
+notebook()
+
+note that the weave command should be run from a terminal, not within Atom.
+
+Julia markdown syntax:
+https://docs.julialang.org/en/v1/stdlib/Markdown/#Markdown-1
+
+Weave extension:
+http://weavejl.mpastell.com/stable/publish/
+(under supported markdown syntax)
+-->
+
+
+- Word embeddings from word2vec
+- Train RNN before this or after?
+- Which features, in other words
+
+## import some labeled data
+
+- Word embeddings come from word2vec
+- Embeddings are organized in the file train_embedding.jl
+- Labels come from a Stata file
+- Import data, pull out
+
+
+First load the data
+```julia
+
+using Flux, CSVFiles, DataFrames, Word2Vec
+
+dat1 = DataFrame(load("embedded_data.csv"));
+```
+Now separate the labels:
+
+```julia
+target = convert(Array{Float64,1}, dat1[:x1])
+```
+
+
+And load the inputs - in this case, the longest diet sentence is 22 words long, so there are at most 22
+columns in this data.
+
+```julia
+
+input = convert(Array{Float64,2}, dat1[:,[:x2, :x3, :x4, :x5, :x6, :x7, :x8, :x9, :x10, :x11, :x12, :x13, :x14, :x15, :x16, :x17, :x18, :x19, :x20, :x21, :x22]])
+
+```
+
+Load the vector of word embeddings:
+
+```julia
+embed_1 = wordvectors("./diet_embed");
+
+get_vector(embed_1, "NEOSURE")
+
+```
+
+
+- Now setup the RNN.
+
+## Convolutional NN
+
+- Per Goldberg, the CNN layer provides an embedding which helps model nonlinear relationships among features.
+
+
+
+- Bi-directional RNN is best, I think.
+- This should take each (word, state) as an input and output a (state) to be fed back in.
+<!-- https://colah.github.io/posts/2015-08-Understanding-LSTMs/ -->
+
+<!-- https://github.com/maetshju/flux-blstm-implementation/blob/master/01-blstm.jl -->
+
+## Recurrent RNN from Goldberg:
+
+- We are given an input $x_{1}, …, x_{n}$.  Each input is represented by a vector $x_{i} \in \mathbb{R}^{d_{in}}$
+- In my case the inputs are the words.  Each word has a single-dimensional input $\mathbb{R}$ from the embeddings
+given by word2vec, though this need not be the case more generally. Single sentences are stored in the `input` table above.
+- The RNN maps the vector of inputs $x_{1}, \ldots, x_{n}$ to the output $y_{n} \in \mathbb{R}^{d_{out}}$
+$$
+y_{1:n} = RNN^* (x_{1:n})
+$$
+$$
+y_{i} = RNN(x_{1:i})
+$$
+$$
+x_{i} \in \mathbb{R}^{d_{in}}, y_{i} \in \mathbb{R}^{d_{out}}
+$$
+- Think of $y_{1:i}$ as a different output for each possible $i=1, \ldots, n$.
+- $y_{1:n}=RNN^* (x_{1:n})$ represents the entire sequence of outputs $y_{1:1}, y_{1:2}, y_{1:3}, \ldots$
+
+## Preserving a state over time
+
+We can take the output of the system at some stage $i = 1, \ldots, n$ and re-input that as an input to
+the next step of the system.  This is a recursive version of the RNN.
+
+The RNN is defined by two functions $O(s)$ and $R(s, x)$ where $O: \mathbb{R}^{f(d_{out})} \rightarrow \mathbb{R}^{d_{out}}$
+maps the current state into the output and $R(s,x) : \mathbb{R}^{f(d_{out})} \times \mathbb{R}^{d_{in}} \rightarrow \mathbb{R}^{f(d_{out})}$ maps
+the input $x$ and the current state $s$ to the output.   These functions are stable over time and take inputs of constant dimension.
+
+In other words, at each step $i = 1, \ldots, n$ we have a state vector $s_{i-1}$ and we use this state
+vector as the input to the function $R$ defining the RNN.
+$$
+s_{i} = R(s_{i-1}, x_{i})
+$$
+$$
+y_{i} = O(s_{i})
+$$
+In this way, the state vector $s_{i}$ preserves information about what happened in the preceding sequence of inputs all the
+way back to the first input $(s_{0}, x_{1})$.  This can be seen by substituting in the functions $R()$ for $s$ at any time
+period $t$:
+
+$$
+s_{t} = R(s_{t-1}, x_{t})
+$$
+$$
+s_{t} = R( \overbrace{R(s_{t-2}, x_{t-1})}^{=s_{t-1}}, x_{t} )
+$$
+$$
+s_{t} = R( R( R( s_{t-3}, x_{t-2}), x_{t-1}), x_{t})
+$$
+$$
+\vdots
+$$
+$$
+s_{t} = R( R( R( \ldots R( s_{0}, x_{1}), \ldots ), x_{t-1}), x_{t})
+$$
+
+
+The first $s_{0}$ vector can be reasonably set to 0 - presumably we have no useful information which would cause us to set
+it to something else.  At each stage we will
+want to concatenate the current state $s_{i-1}$ with the current input $x_{i}$ to feed this to the function $R(s,x)$. This
+can be used as an acceptor, so only the final output state will be used for prediction.
+
+Features in this case are given very easily by the row of the `input` table, but this does not capture the
+fact that the set of features input to the model might be growing.
+
+
+# Implementation
+
+Now define some functions.
+
+```julia
+"""
+    `inp_vec(x, i; bi=false)`
+    this function takes a set of features and returns input vector.
+    Can do bidirectional as well w/ `bi = true`.
+    Returns a one-dimensional vector of embeddings of words either up to `i`
+    or from `1:i` and then `i:end` (including `i` twice).
+"""
+function inp_vec(x, i; bi=false)
+  if bi
+    return vcat(copy(x[1:i]), reverse(x[i:end]))
+  else
+    return copy(x[1:i])
+  end
+end
+```
