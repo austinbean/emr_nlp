@@ -12,8 +12,8 @@ labeled data can then be used for training
 
 
 * Import data and manipulate to generate training file.  
-
-import excel "/Users/austinbean/Desktop/programs/emr_nlp/String Search Diet 20101102.xls", sheet("Formula") firstrow clear
+local whereami = "tuk39938"
+import excel "/Users/`whereami'/Desktop/programs/emr_nlp/String Search Diet 20101102.xls", sheet("Formula") firstrow clear
 
 
 ************
@@ -21,17 +21,18 @@ import excel "/Users/austinbean/Desktop/programs/emr_nlp/String Search Diet 2010
 ************
 
 * remove some useless strings and punctuation.
-	replace string_text_diet = subinstr(string_text_diet, "DIET:", "DIET", .)
+	* NOTE - wrong to remove periods, since 2.5 is valid.  
+	replace string_text_diet = subinstr(string_text_diet, "DIET:", "DIET ", .)
 	replace string_text_diet = subinstr(string_text_diet, ":", " ", .)
-	replace string_text_diet = subinstr(string_text_diet, ",", "", .)
+	replace string_text_diet = subinstr(string_text_diet, ",", " ", .)
 	replace string_text_diet = subinstr(string_text_diet, "--", " ", .)
 	replace string_text_diet = subinstr(string_text_diet, "-", " TO ", .)
-	replace string_text_diet = subinstr(string_text_diet, ".", "", .)
-	replace string_text_diet = subinstr(string_text_diet, ";", "", .)
-	replace string_text_diet = subinstr(string_text_diet, "+", "", .)
-	replace string_text_diet = subinstr(string_text_diet, "(", "", .)
-	replace string_text_diet = subinstr(string_text_diet, ")", "", .)
-	replace string_text_diet = subinstr(string_text_diet, "&", "AND", .)
+	*replace string_text_diet = subinstr(string_text_diet, ".", "", .)
+	replace string_text_diet = subinstr(string_text_diet, ";", " ", .)
+	replace string_text_diet = subinstr(string_text_diet, "+", " ", .)
+	replace string_text_diet = subinstr(string_text_diet, "(", " ", .)
+	replace string_text_diet = subinstr(string_text_diet, ")", " ", .)
+	replace string_text_diet = subinstr(string_text_diet, "&", " AND ", .)
 
 
 
