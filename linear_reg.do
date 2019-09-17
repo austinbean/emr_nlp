@@ -4,7 +4,11 @@
 
 local whereami = "tuk39938"
 import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
+/*
+There is a lot more intelligent processing which can be done here - especially
+stripping out nonsense or irrelevant words.  
 
+*/
 
 
 * Redo import so that the periods in 2.5, 4.5 are kept.
@@ -17,6 +21,8 @@ import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 * keep list of unique words
 	drop if word == ""
 	sort word
+	gen wcc = 1
+	bysort word: egen word_count = sum(wcc)
 	duplicates drop word, force
 	keep word
 	* "indicator" for each word
@@ -61,6 +67,7 @@ import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 	summarize pred_error, d 
 	local top = `r(p99)'
 	hist pred_error if pred_error < `top'
+	hist pred_error if pred_error < 1000
 	egen mse = mean(pred_error) if train == 0
 	replace mse = mse/`test_ct'
 	summarize mse
