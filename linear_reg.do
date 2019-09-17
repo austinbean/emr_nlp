@@ -61,6 +61,8 @@ stripping out nonsense or irrelevant words.
 
 * Predict
 	predict pred_cons if train == 0, xb 
+	* negative predictions make no sense.  
+		replace pred_cons = max(0, pred_cons)
 	count if train == 0
 	local test_ct = `r(N)'
 	gen pred_error = (total_quantity - pred_cons)^2 if train == 0
@@ -72,7 +74,14 @@ stripping out nonsense or irrelevant words.
 	replace mse = mse/`test_ct'
 	summarize mse
 /*
+	* Keeping negative predictions.
 		Variable |        Obs        Mean    Std. Dev.       Min        Max
 	-------------+---------------------------------------------------------
 			 mse |      1,514    1.055129           0   1.055129   1.055129
+			 
+	* Replacing negative predictions w/ 0
+	    Variable |        Obs        Mean    Std. Dev.       Min        Max
+	-------------+---------------------------------------------------------
+			 mse |      1,514    .9417905           0   .9417905   .9417905
+
 */
