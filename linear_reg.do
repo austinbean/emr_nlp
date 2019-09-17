@@ -61,6 +61,9 @@ stripping out nonsense or irrelevant words.
 
 * Predict
 	predict pred_cons if train == 0, xb 
+	hist pred_cons if train == 0, title("Density of Daily Consumption in Oz") graphregion(color(white))
+	twoway (hist total_quantity if train == 1, color(green%30))  ( hist pred_cons if train == 0, color(red%30)), legend( label(1 "Actual") label(2 "Predicted")) graphregion(color(white)) note("(Actual values based on regular expression matching)") title("Predicted vs. 'Actual' Consumption Figures") subtitle("From a simple linear model x{&beta} where X is" "a collection of indicators for the presence  of a single word" "Overall MSE - 0.94 oz")
+	graph export "/Users/`whereami'/Desktop/programs/emr_nlp/linear_results.png", replace
 	* negative predictions make no sense.  
 		replace pred_cons = max(0, pred_cons)
 	count if train == 0
