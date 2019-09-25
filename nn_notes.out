@@ -1,5 +1,6 @@
 \BOOKMARK [1][-]{section.1}{nn\040notes}{}% 1
 \BOOKMARK [2][-]{subsection.1.1}{import\040some\040labeled\040data}{section.1}% 2
-\BOOKMARK [2][-]{subsection.1.2}{Recurrent\040RNN\040from\040Goldberg:}{section.1}% 3
-\BOOKMARK [2][-]{subsection.1.3}{Preserving\040a\040state\040over\040time}{section.1}% 4
-\BOOKMARK [1][-]{section.2}{Implementation}{}% 5
+\BOOKMARK [2][-]{subsection.1.2}{Convolutional\040NN}{section.1}% 3
+\BOOKMARK [2][-]{subsection.1.3}{Recurrent\040RNN\040from\040Goldberg:}{section.1}% 4
+\BOOKMARK [2][-]{subsection.1.4}{Preserving\040a\040state\040over\040time}{section.1}% 5
+\BOOKMARK [1][-]{section.2}{Implementation}{}% 6

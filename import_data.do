@@ -13,7 +13,7 @@ labeled data can then be used for training
 
 * Import data and manipulate to generate training file.  
 local whereami = "tuk39938"
-import excel "/Users/`whereami'/Desktop/programs/emr_nlp/String Search Diet 20101102.xls", sheet("Formula") firstrow clear
+import excel "/Users/`whereami'/Google Drive/Current Projects/CHOP EMR/String Search Diet 20101102.xls", sheet("Formula") firstrow clear
 
 
 ************
@@ -207,6 +207,17 @@ browse diet
 		* limited number of uses of "daily" are inconsistent, e.g., "6 times daily" vs. "48 oz daily."
 		* miscellaneous:
 			* [0-9]X per day... replace X with times?  
+	* look for daily, per day
+		* Examples: 5X DAILY, ONCE DAILY, TWICE DAILY, 
+		* OZ DAILY - can be matched.  
+		* OZ A DAY - can be matched.
+		* # DAILY - maybe.  
+		gen aday_m = regexm(diet, "(OZ | OUNCES )A DAY")
+		gen daily_m = regexm(diet, "(OUNCES |OZ )DAILY")
+		gen dly_freq = regexs(0) if regexm(diet, "[0-9]+( OZ| OUNCES) DAILY")
+		gen dly_num = regexs(0) if regexm(dly_freq, "[0-9][0-9]")
+		destring dly_num, replace 
+	
 	
 ******************
 * TOTAL QUANTITY *
