@@ -64,7 +64,7 @@ stripping out nonsense or irrelevant words.
 	* negative predictions make no sense.  
 	replace pred_cons = max(0, pred_cons)
 	hist pred_cons if train == 0, title("Density of Daily Consumption in Oz") graphregion(color(white))
-	twoway (hist total_quantity if train == 1, color(green%30))  ( hist pred_cons if train == 0, color(red%30)), legend( label(1 "Actual") label(2 "Predicted")) graphregion(color(white)) note("(Actual values based on regular expression matching)") title("Predicted vs. 'Actual' Consumption Figures") subtitle("From a simple linear model x{&beta} where X is" "a collection of indicators for the presence  of a single word" "Overall MSE - 0.94 oz")
+	twoway (hist total_quantity if train == 1, color(green%30))  ( hist pred_cons if train == 0, color(red%30)), legend( label(1 "Actual") label(2 "Predicted")) graphregion(color(white)) note("(Actual values based on regular expression matching)") title("Predicted vs. 'Actual' Consumption Figures") subtitle("From a simple linear model x{&beta} where X is" "a collection of indicators for the presence  of a single word" "Overall MSE - 0.14 oz")
 	graph export "/Users/`whereami'/Desktop/programs/emr_nlp/linear_results.png", replace
 	count if train == 0
 	local test_ct = `r(N)'
@@ -77,14 +77,10 @@ stripping out nonsense or irrelevant words.
 	replace mse = mse/`test_ct'
 	summarize mse
 /*
-	* Keeping negative predictions.
-		Variable |        Obs        Mean    Std. Dev.       Min        Max
-	-------------+---------------------------------------------------------
-			 mse |      1,514    1.055129           0   1.055129   1.055129
-			 
-	* Replacing negative predictions w/ 0
-	    Variable |        Obs        Mean    Std. Dev.       Min        Max
-	-------------+---------------------------------------------------------
-			 mse |      1,514    .9417905           0   .9417905   .9417905
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+         mse |      1,678    .1478308           0   .1478308   .1478308
+
 
 */
