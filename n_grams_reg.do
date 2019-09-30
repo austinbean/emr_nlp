@@ -3,7 +3,7 @@
 	clear
 	clear mata
 	clear matrix 
-	set maxvar 13000
+	set maxvar 15000
 
 
 local whereami = "tuk39938"
@@ -64,7 +64,7 @@ import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 	
 * reload and merge word list back in
 	* add word "indicators"
-foreach grm of numlist 2(1)4{
+foreach grm of numlist 1(1)4{
 
 	preserve
 
