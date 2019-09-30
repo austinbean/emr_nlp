@@ -101,22 +101,35 @@ log using "/Users/`whereami'/Desktop/programs/emr_nlp/results_ngrams_log.log", a
 
 * post estimation
 	predict pred_cons if train == 0, xb penalized
+
+	
 	* simplest sanity check - no negative predictions
 	replace pred_cons = max(0, pred_cons)
-	hist pred_cons if train == 0, title("Density of Daily Consumption in Oz") graphregion(color(white))
 	
+		* summarize predicted values:
+	di "PREDICTION:"
+	summarize pred_cons, d 
+	
+	di "ZEROS:"
+	count if pred_cons == 0
+	
+	hist pred_cons if train == 0, title("Density of Predicted Daily Consumption in Oz") subtitle("`grm'gram based prediction w/ LASSO") graphregion(color(white))
+	graph export "/Users/`whereami'/Desktop/programs/emr_nlp/lasso_`grm'gram_preds.png", replace
 	count if train == 0
 	local test_ct = `r(N)'
 	gen pred_error = (total_quantity - pred_cons)^2 if train == 0
 	summarize pred_error, d 
 	local top = `r(p99)'
-	hist pred_error if pred_error < `top'
-	hist pred_error if pred_error < 1000
+	hist pred_error if pred_error < `top', title("Density of Squared Error") subtitle("`grm'gram based prediction w/ LASSO") graphregion(color(white)) note("Below 99th %ile of Error Value")
+	graph export "/Users/`whereami'/Desktop/programs/emr_nlp/lasso_`grm'gram_prederr.png", replace
+
+	*hist pred_error if pred_error < 1000
 	egen mse = mean(pred_error) if train == 0
 	replace mse = mse/`test_ct'
 	summarize mse
 	local mse_v = `r(mean)'
 log close 	
+
 	twoway (hist total_quantity if train == 1, color(green%30))  ( hist pred_cons if train == 0, color(red%30)), legend( label(1 "Actual") label(2 "Predicted")) graphregion(color(white)) note("(Actual values based on regular expression matching)") title("Predicted vs. 'Actual' Consumption Figures") subtitle("From a Lasso linear model x{&beta} where X is" "a collection of indicators for the presence  of `grm' grams" "Overall MSE - `mse_v' oz")
 		graph export "/Users/`whereami'/Desktop/programs/emr_nlp/lasso_`grm'gram_results.png", replace
 	
