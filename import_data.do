@@ -12,7 +12,7 @@ labeled data can then be used for training
 
 
 * Import data and manipulate to generate training file.  
-local whereami = "tuk39938"
+local whereami = "austinbean"
 import excel "/Users/`whereami'/Google Drive/Current Projects/CHOP EMR/String Search Diet 20101102.xls", sheet("Formula") firstrow clear
 
 
@@ -227,7 +227,7 @@ browse diet
 	
 	
 ******************
-* TOTAL QUANTITY *
+* TOTAL QUANTITY * Herschen -> something about matching patients to birth certs w/out names or address on both sides.  
 ******************
 	
 	gen total_quantity = .
@@ -247,7 +247,9 @@ keep diet total_quantity
 export delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv", replace
 
 
+hist total_quantity if total_quantity < 100, graphregion(color(white)) title("Quantites Computed by Regex Matching") xtitle("Ounces Per Day") freq note("Total Observations: 5478" "Unknowns: Infant Age, Quantity of Breast Milk, etc " "Excludes 22 Observations > 100 ounces/day ") color(blue%40)
 
+graph export "/Users/`whereami'/Desktop/programs/emr_nlp/regex_quantities.png", replace
 
 /*
 	
