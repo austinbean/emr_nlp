@@ -1,5 +1,5 @@
 * import and use word embeddings for classification task:
-
+	* Can also do... subset of n embeddings, rather than the sum?  
 
 clear 
 local whereami = "austinbean"
