@@ -1,0 +1,9 @@
+* diet embed dict
+
+dictionary using diet_embed{
+
+_column(1)
+	
+
+
+}
