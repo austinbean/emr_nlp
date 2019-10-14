@@ -104,7 +104,7 @@ log using "/Users/`whereami'/Desktop/programs/emr_nlp/results_ngrams_log.log", a
 
 	
 	* simplest sanity check - no negative predictions
-	replace pred_cons = max(0, pred_cons)
+	replace pred_cons = max(0, pred_cons) if pred_cons != .
 	
 		* summarize predicted values:
 	di "PREDICTION:"

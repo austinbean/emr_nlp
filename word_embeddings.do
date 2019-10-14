@@ -2,9 +2,9 @@
 	* Can also do... subset of n embeddings, rather than the sum?  
 
 clear 
-local whereami = "austinbean"
+local whereami = "tuk39938"
 
-import delimited "/Users/austinbean/Desktop/programs/emr_nlp/diet_embed.txt", delimiter(space) encoding(Big5) 
+import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/diet_embed.txt", delimiter(space) encoding(Big5) 
 
 drop if _n == 1
 
@@ -15,18 +15,17 @@ foreach num of numlist 2(1)101{
 	rename v`num' embed`emnum'
 }
 
-save "/Users/austinbean/Desktop/programs/emr_nlp/diet_embed.dta", replace
+save "/Users/`whereami'/Desktop/programs/emr_nlp/diet_embed.dta", replace
 
 keep word embed1
 
-save "/Users/austinbean/Desktop/programs/emr_nlp/embed_subset.dta", replace
+save "/Users/`whereami'/Desktop/programs/emr_nlp/embed_subset.dta", replace
 
 
-local whereami = "austinbean"
 import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 
 
-* Split diet variable into individual words - total vocabular is quite small.
+* Split diet variable into individual words - total vocabulary is quite small.
 	split diet, p(" ") gen(word)
 	gen patid = _n
 	reshape long word, i(patid) j(wct)
@@ -34,7 +33,7 @@ import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 
 * merge embeddings
 
-	merge m:1 word using "/Users/austinbean/Desktop/programs/emr_nlp/embed_subset.dta"
+	merge m:1 word using "/Users/`whereami'/Desktop/programs/emr_nlp/embed_subset.dta"
 	drop if _merge == 2
 	drop _merge
 	
@@ -89,3 +88,10 @@ import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 		twoway (hist total_quantity if train == 1 & total_quantity < 100, color(green%30))  ( hist pred_cons if train == 0, color(red%30)), legend( label(1 "Actual") label(2 "Predicted")) graphregion(color(white)) note("(Actual values based on regular expression matching)" "Excludes training values over 100 oz/day" "Word Embeddings Trained using Word2Vec") title("Predicted vs. 'Actual' Consumption Figures") subtitle("From a simple linear model x{&beta} where X is" "1 Dimensional Word Embedding" "Overall MSE - `mse_e' oz" )
 	
 	graph export "/Users/`whereami'/Desktop/programs/emr_nlp/embedding_linear_results_subs.png", replace
+	
+	
+	
+	
+	
+	
+
