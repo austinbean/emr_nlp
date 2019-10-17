@@ -28,7 +28,7 @@
 	replace train = 1 if rand_split <= 0.7
 	
 
-	regress total_quantity embed* if train == 1
+	regress total_quantity embed* if train == 1, nocons
 	predict pred_cons if train == 0, xb
 	
 	count if train == 0

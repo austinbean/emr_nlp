@@ -64,7 +64,7 @@ import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 
 * Lasso:
 
-lasso linear total_quantity v* if train == 1
+lasso linear total_quantity v* if train == 1, nocons 
 lassocoef, display(coef, standardized) sort(coef, standardized)
 lassogof
 

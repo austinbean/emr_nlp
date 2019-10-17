@@ -59,7 +59,7 @@ import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 	gen train = 0
 	replace train = 1 if rand_split <= 0.7
 	
-	reg total_quantity total_embed 
+	reg total_quantity total_embed , nocons
 	predict pred_cons if train == 0, xb
 	
 	count if train == 0

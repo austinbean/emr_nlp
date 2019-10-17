@@ -57,7 +57,7 @@ stripping out nonsense or irrelevant words.
 	replace train = 1 if rand_split <= 0.7
 
 * Linear Model for Prediction
-	regress total_quantity v* if train == 1
+	regress total_quantity v* if train == 1, nocons
 
 * Predict
 	predict pred_cons if train == 0, xb 

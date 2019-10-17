@@ -95,7 +95,7 @@ foreach grm of numlist 1(1)4{
 	replace train = 1 if rand_split <= 0.7
 log using "/Users/`whereami'/Desktop/programs/emr_nlp/results_ngrams_log.log", append
 	* run a lasso to select n-grams. 
-	lasso linear total_quantity v* if train == 1
+	lasso linear total_quantity v* if train == 1, noconstant 
 	lassocoef, display(coef, standardized) sort(coef, standardized)
 	lassogof
 
@@ -130,7 +130,7 @@ log using "/Users/`whereami'/Desktop/programs/emr_nlp/results_ngrams_log.log", a
 	local mse_v = `r(mean)'
 log close 	
 
-	twoway (hist total_quantity if train == 1, color(green%30))  ( hist pred_cons if train == 0, color(red%30)), legend( label(1 "Actual") label(2 "Predicted")) graphregion(color(white)) note("(Actual values based on regular expression matching)") title("Predicted vs. 'Actual' Consumption Figures") subtitle("From a Lasso linear model x{&beta} where X is" "a collection of indicators for the presence  of `grm' grams" "Overall MSE - `mse_v' oz")
+	twoway (hist total_quantity if train == 1, color(green%30))  ( hist pred_cons if train == 0, color(red%30)), legend( label(1 "Actual") label(2 "Predicted")) graphregion(color(white)) note("(Actual values based on regular expression matching)" "Constant Excluded") title("Predicted vs. 'Actual' Consumption Figures") subtitle("From a Lasso linear model x{&beta} where X is" "a collection of indicators for the presence  of `grm' grams" "Overall MSE - `mse_v' oz")
 		graph export "/Users/`whereami'/Desktop/programs/emr_nlp/lasso_`grm'gram_results.png", replace
 	
 restore
