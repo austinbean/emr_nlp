@@ -2,7 +2,7 @@
 	* Can also do... subset of n embeddings, rather than the sum?  
 
 clear 
-local whereami = "tuk39938"
+local whereami = "austinbean"
 
 import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/diet_embed.txt", delimiter(space) encoding(Big5) 
 

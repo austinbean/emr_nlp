@@ -2,7 +2,7 @@
 
 
 
-local whereami = "tuk39938"
+local whereami = "austinbean"
 import delimited "/Users/`whereami'/Desktop/programs/emr_nlp/data.csv",   clear
 /*
 There is a lot more intelligent processing which can be done here - especially
