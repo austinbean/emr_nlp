@@ -80,14 +80,14 @@ for ep_ix in 1:100
     # what is the MSE on the validation data?  -> is MSE the best summary?
         # could also do: how many get within: 1, 2, 3, 4, 5, 6 ounces of correct ans.
     # acc = loss_d(v_in, v_targ)
-    acc = mean( abs.(mod3(v_in).- v_targ) )
+    acc = ( sum((mod3(v_in).- v_targ).^2) )/vtr
     #@info(@sprintf("[%d]: Test accuracy: %.4f", ep_ix, acc))
 
     # another accuracy measure.
     nt = size(v_targ)[2]
-    acc_1 = sum(abs.(mod3(v_in).-v_targ).<= 1)/nt
-    acc_5 = sum(abs.(mod3(v_in).-v_targ).<= 5)/nt
-    acc_10 =  sum(abs.(mod3(v_in).-v_targ).<= 10)/nt
+    acc_1 =  sum((mod3(v_in).-v_targ).^2)/vtr
+    acc_5 =  sum(abs.(mod3(v_in).-v_targ).<= 5)/nt
+    acc_10 = sum(abs.(mod3(v_in).-v_targ).<= 10)/nt
     acc_sd = sum(abs.(mod3(v_in).-v_targ).<= std(v_targ))/nt
 
     @info( @sprintf("[%d] - Within 1: %.2f, Within 5: %.2f, Within 10: %.2f, Within 1 SD: %.2f  ", ep_ix, acc_1, acc_5, acc_10, acc_sd ))
