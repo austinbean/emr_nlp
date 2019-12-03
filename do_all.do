@@ -8,8 +8,6 @@ local whereami = "tuk39938"
 clear 
 capture do "/Users/`whereami'/Desktop/programs/emr_nlp/linear_reg.do"
 
-stop
-
 clear
 capture do "/Users/`whereami'/Desktop/programs/emr_nlp/n_grams_reg.do"
 
