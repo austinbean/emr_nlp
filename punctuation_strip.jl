@@ -51,7 +51,7 @@ function string_cleaner(x::String)
 		# slash 
 	x = replace(x, r"/{1,}"=>" ")
 		# spaces after numbers: 
-	x = replace(x, r"?<=[0-9])(?=[A-Za-z])"=>" ")
+	x = replace(x, r"(?<=[0-9])(?=[A-Za-z])"=>" ")
 		# spaces before numbers, but beware v-codes 
 	x = replace(x, r"(?<=[A-UW-Za-uw-z])(?=[0-9])"=>" ")
 		# letter comma letter w/ no spaces 
@@ -59,6 +59,7 @@ function string_cleaner(x::String)
 		# %-ile to %
 	x = replace(x, r"%ile"=>"%") # %-ile may be missed.
 		# other punctuation
+		
 	x = replace(x, r"@"=>" ")
 	x = replace(x, r"#"=>" ")
 	x = replace(x, r">"=>" ")
@@ -68,16 +69,17 @@ function string_cleaner(x::String)
 	x = replace(x, r":"=>" ")
 	x = replace(x, r","=>" ")
 	x = replace(x, r";"=>" ")
-	x = replace(x, r"+"=>" ")
-	x = replace(x, r"("=>" ")
-	x = replace(x, r")"=>" ")
+	x = replace(x, r"\+"=>" ")
+	x = replace(x, r"\("=>" ")
+	x = replace(x, r"\)"=>" ")
 	x = replace(x, r"!"=>" ")
-	x = replace(x, r"["=>" ")
-	x = replace(x, r"]"=>" ")
-	x = replace(x, r"*"=>" ")
+	x = replace(x, r"\["=>" ")
+	x = replace(x, r"\]"=>" ")
+	x = replace(x, r"\*"=>" ")
 	x = replace(x, r"="=>" ")
 	x = replace(x, r"&"=>" and ")
 	x = replace(x, r"_{2,}"=>" ")
+	
 		# multiple spaces
 	x = replace(x, r" {2,}"=>" ")
 		# both apostrophes 
