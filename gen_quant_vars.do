@@ -121,14 +121,17 @@ diet_text
 	gen tpd = .
 	replace tpd = frequency_high if frequency_measured_times == 1 & frequency_high != .
 	replace tpd = 24/frequency_high if frequency_measured_hours == 1  & frequency_high != .
-		* special case: frequency_measured_days is for "30 oz per day" style records.  
-	*replace tpd = frequency_high if frequency_measured_days == 1 & frequency_high != .
+		* special case: frequency_measured_days is for "30 oz per day" style records. 
+		* This may also be 8 times per day.
+	replace tpd = frequency_high if frequency_measured_days == 1 & frequency_high != .
 	
 	* Alt times per day (for low, when present)
 	
 	gen tpd_l = .
 	replace tpd_l = frequency_low if frequency_measured_times == 1 & frequency_low != .
 	replace tpd_l = 24/frequency_low if frequency_measured_hours == 1 & frequency_low != .  
+		* special case: frequency_measured_days is for "30 oz day"
+		* This can also be - 8 times per day
 	replace tpd_l = frequency_low if frequency_measured_days == 1 & frequency_low != .
 	
 	* probably check something about whether there are quantities present AND ad_lib == 1
@@ -172,11 +175,10 @@ diet_text
 
 	
 	
-	* Breast milk variables - goal is to get something like "total minutes" - that's probably the best we can do.  
-		* this will be done as minutes / frequency 
+* Breast milk variables - goal is to get something like "total minutes" - that's probably the best we can do.  
+	* this will be done as minutes / frequency 
 
-	* BM vars:
-	
+	* BM Duration
 	destring breast_milk_duration_low , replace
 	destring breast_milk_duration_high , replace
 	destring breast_milk_unclassified , replace
@@ -186,7 +188,7 @@ diet_text
 	
 	destring breast_milk_measured_hours , replace
 	destring breast_milk_measured_times , replace
-	destring breast_milk_measured_days , replace
+	destring breast_milk_measured_days , replace // this would be for an unlikely "300 minutes per day" category
 	destring breast_milk_measured_unclassifie , replace
 	
 	egen bm_quant_check = rowtotal(breast_milk_measured_hours breast_milk_measured_times breast_milk_measured_days breast_milk_measured_unclassifie)
@@ -196,20 +198,23 @@ diet_text
 	replace breast_milk_measured_days = . if bm_quant_check > 1 
 	replace breast_milk_measured_unclassifie = . if bm_quant_check > 1
 	
-	* frequency - high: 
+	* BM frequency variables. 
+	
+	* BM frequency - high: 
 	gen bm_frq = .
 	replace bm_frq =(24/breast_milk_frequency_high) if breast_milk_measured_hours == 1 & breast_milk_frequency_high != .
 	replace bm_frq =breast_milk_frequency_high if breast_milk_measured_times == 1 & breast_milk_frequency_high != .
 		* recall that the "days" measure is for "300 minutes per day" (quite uncommon)
-		* So: don't uncomment
-	* replace bm_frq =breast_milk_frequency_high if breast_milk_measured_days == 1 & breast_milk_frequency_high != .
+		* This could be for a "total times per day"
+	replace bm_frq =breast_milk_frequency_high if breast_milk_measured_days == 1 & breast_milk_frequency_high != .
 	
-	* frequency - low 
+	* BM frequency - low 
 	gen bm_frq_l = .
 	replace bm_frq_l = (24/breast_milk_frequency_low) if breast_milk_measured_hours == 1 & breast_milk_frequency_low != .
 	replace bm_frq_l = breast_milk_frequency_low if breast_milk_measured_times == 1 & breast_milk_frequency_low != .
-		
-	* duration 
+		* _measured_days case treated separately below.  
+	
+	* BM duration 
 		* there aren't significant variations in recording this.  
 	gen bm_dur = breast_milk_duration_high
 	gen bm_dur_l = breast_milk_duration_low 
@@ -217,26 +222,150 @@ diet_text
 	
 	* BM quantity:
 	gen td_bm =  (bm_frq*bm_dur)
+	replace td_bm = breast_milk_duration_high if breast_milk_measured_days == 1
 	label variable td_bm "total duration of breastfeeding"
+		* low 
 	gen td_bm_l = (bm_frq_l*bm_dur_l)
+	replace td_bm_l = breast_milk_duration_low if breast_milk_measured_days == 1
 	label variable td_bm_l "tot. duration breastfeeding - LOW vals"
 	
 
 	
 	* SOLIDS GROUP 
+			* condition all of these on solids mentioned?
+	destring solids_mentioned , replace
+		* Quantity Measures
+	destring solids_quantity_low , replace 
+	destring solids_quantity_high , replace 
 	
-solids_mentioned 
-solids_quantity_low 
-solids_quantity_high 
-solids_quantity_ounces 
-solids_quantity_ML 
-solids_quantity_CC 
-solids_quantity_KCAL 
-solids_quantity_unclassified 
+	destring solids_quantity_ounces , replace 
+	destring solids_quantity_ML , replace 
+	destring solids_quantity_CC , replace 
+	destring solids_quantity_KCAL , replace 
+	destring solids_quantity_unclassified , replace 
+		* there is a "total quantity per day" category here missing, if that exists. There is one for the frequency measure.
+	
+	egen sol_q_check = rowtotal(solids_quantity_*)
+	replace solids_quantity_ounces = . if sol_q_check > 1 
+	replace solids_quantity_ML = . if sol_q_check > 1
+	replace solids_quantity_CC = . if sol_q_check > 1 
+	replace solids_quantity_KCAL = . if sol_q_check > 1
+	
+	* Quantity 
+	gen s_q = .
+	replace s_q = solids_quantity_high if solids_quantity_ML == 1
+	replace s_q = (solids_quantity_high/(29.5)) if solids_quantity_CC == 1
+	replace s_q = (solids_quantity_high/(29.5)) if solids_quantity_KCAL == 1
+	
+	* low 
+	gen s_q_l = .
+	replace s_q_l = solids_quantity_low if solids_quantity_low != . & solids_quantity_ML == 1
+	replace s_q_l = (solids_quantity_low/(29.5)) if solids_quantity_low != . & solids_quantity_CC == 1
+	replace s_q_l = (solids_quantity_low/(29.5)) if solids_quantity_low != . & solids_quantity_KCAL == 1
 
-solids_frequency_low 
-solids_frequency_high 
-solids_frequency_hours 
-solids_frequency_days 
-solids_frequency_times 
-solids_frequency_unclassified 
+		* Frequency measures
+	destring solids_frequency_low , replace
+	destring solids_frequency_high , replace
+	
+	destring solids_frequency_hours , replace
+	destring solids_frequency_days , replace
+	destring solids_frequency_times , replace
+	destring solids_frequency_unclassified , replace
+	
+	egen sol_freq_check = rowtotal(solids_frequency_*)
+	replace solids_frequency_hours = . if sol_freq_check > 1
+	replace solids_frequency_days = . if sol_freq_check > 1
+	replace solids_frequency_times = . if sol_freq_check > 1
+	replace solids_frequency_unclassified = . if sol_freq_check > 1
+	
+	* totals 
+	gen s_f = .
+	replace s_f = solids_frequency_high if solids_frequency_times == 1 
+	replace s_f = (24/solids_frequency_high) if solids_frequency_hours == 1 
+		* the day value is special, but there isn't a matching quantity value to make sense of it
+	* replace s_f =  solids_frequency_high if solids_frequency_high == 1 
+	
+	* totals low 
+	gen s_f_l = .
+	replace s_f_l = solids_frequency_low if solids_frequency_times == 1 & solids_frequency_low != .
+	replace s_f_l = (24/solids_frequency_low) if solids_frequency_hours == 1 & solids_frequency_low != .
+		* the day value is special, but there isn't a matching quantity value to make sense of it
+	* replace s_f_l =  solids_frequency_low if solids_frequency_low == 1 
+
+	* Solid foods total:
+	gen solid_total = s_f*s_q 
+	gen solid_total_low = s_f_l*s_q_l 
+	
+	
+	* JUICE GROUP 
+		* indicated
+	destring juice_mentioned , replace
+		* quantity measures
+	destring juice_quantity_low , replace
+	destring juice_quantity_high , replace
+	
+	destring juice_quantity_ounces , replace
+	destring juice_quantity_ML , replace
+	destring juice_quantity_CC , replace
+	destring juice_quantity_KCAL , replace
+	destring juice_quantity_unclassified , replace
+	
+	egen juice_q_check = rowtotal(juice_quantity*)
+	replace juice_quantity_ML = . if juice_q_check > 1
+	replace juice_quantity_CC = . if juice_q_check > 1
+	replace juice_quantity_KCAL = . if juice_q_check > 1
+	replace juice_quantity_unclassified = . if juice_q_check > 1
+	
+	* Quantity 
+	gen j_q = .
+	replace j_q = juice_quantity_high if juice_quantity_ML == 1
+	replace j_q = (juice_quantity_high/(29.5)) if juice_quantity_CC == 1
+	replace j_q = (juice_quantity_high/(29.5)) if juice_quantity_KCAL == 1
+	
+	* low 
+	gen j_q_l = .
+	replace j_q_l = juice_quantity_low if juice_quantity_low != . & juice_quantity_ML == 1
+	replace j_q_l = (juice_quantity_low/(29.5)) if juice_quantity_low != . & juice_quantity_CC == 1
+	replace j_q_l = (juice_quantity_low/(29.5)) if juice_quantity_low != . & juice_quantity_KCAL == 1
+
+	
+		* frequency measures. 
+	destring juice_frequency_low , replace
+	destring juice_frequency_high , replace
+	
+	destring juice_frequency_hours , replace
+	destring juice_frequency_days , replace
+	destring juice_frequency_times , replace
+	destring juice_frequency_unclassified , replace
+
+	egen juice_f_check = rowtotal(juice_frequency_*)
+	replace juice_frequency_hours = . if juice_f_check > 1
+	replace juice_frequency_days = . if juice_f_check > 1
+	replace juice_frequency_times = . if juice_f_check > 1
+	replace juice_frequency_unclassified = . if juice_f_check > 1
+	
+		* totals 
+	gen j_f = .
+	replace j_f = juice_frequency_high if juice_frequency_times == 1 
+	replace j_f = (24/juice_frequency_high) if juice_frequency_hours == 1 
+		* the day value is special, but there isn't a matching quantity value to make sense of it
+	* replace j_f =  juice_frequency_high if juice_frequency_high == 1 
+	
+	* totals low 
+	gen j_f_l = .
+	replace j_f_l = juice_frequency_low if juice_frequency_times == 1 & juice_frequency_low != .
+	replace j_f_l = (24/juice_frequency_low) if juice_frequency_hours == 1 & juice_frequency_low != .
+		* the day value is special, but there isn't a matching quantity value to make sense of it
+	* replace j_f_l =  juice_frequency_low if juice_frequency_low == 1 
+
+	* Solid foods total:
+	gen juice_total = j_f*j_q 
+	gen juice_total_low = j_f_l*j_q_l 
+	
+	
+
+	* SPIT UP GROUP
+	destring spits_up, replace 
+	destring GERD, replace
+	gen spit_up = .
+	replace spit_up = 1 if 	spits_up == 1 | GERD == 1
