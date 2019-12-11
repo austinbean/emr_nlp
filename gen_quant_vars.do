@@ -1,6 +1,9 @@
 
 /*
 
+Split into several different, related ideas.  Want to classify: formula, BM, solids, juice, spitting up.  This is five separate ideas.  
+
+TODO - review codebook entry for frequency days.  
 Var Names:
 
 Replicate 
@@ -14,6 +17,7 @@ curr_loc
 
 no_diet_recorded 
 
+	* formula-related measures.  
 quantity_low 
 quantity_high 
 quantity_ounces 
@@ -34,6 +38,8 @@ breast_milk_ad_lib
 formula 
 breast_milk 
 
+
+	* breast milk related measures.  
 breast_milk_duration_low 
 breast_milk_duration_high 
 breast_milk_unclassified 
@@ -45,6 +51,8 @@ breast_milk_measured_times
 breast_milk_measured_days 
 breast_milk_measured_unclassifie 
 
+
+	* Solids are a separate task to perform.  
 solids_mentioned 
 solids_quantity_low 
 solids_quantity_high 
@@ -61,6 +69,8 @@ solids_frequency_days
 solids_frequency_times 
 solids_frequency_unclassified 
 
+
+	* a juice task -> this is a separate outcome to measure.
 juice_mentioned 
 juice_quantity_low 
 juice_quantity_high 
@@ -77,8 +87,11 @@ juice_frequency_days
 juice_frequency_times 
 juice_frequency_unclassified 
 
-spits_up 
-GERD 
+
+	* these two can be used as a separate classification task
+	spits_up 
+	GERD
+	
 CAUTION 
 food_typo 
 typos 
@@ -92,10 +105,6 @@ diet_text
 		* there are a lot of possible combinations here.
 		* Need to do: frequency, quantity, then combine, but remember to check 0/missing.
 	
-		gen tq = .
-			* There is much more to think through here and variables we want to make sure are nonmissing!  
-			
-
 		* Times Per Day (this is for formula):
 		destring frequency_high, replace
 		destring frequency_low, replace
@@ -111,6 +120,7 @@ diet_text
 		gen tpd = .
 		replace tpd = frequency_high if frequency_measured_times == 1 & frequency_high != .
 		replace tpd = 24/frequency_high if frequency_measured_hours == 1  & frequency_high != .
+			STOP - // This is probably a total quantity per day measure.  In which case tpd should be quantity_high, not frequency_high * quantity_high 
 		replace tpd = frequency_high if frequency_measured_days == 1 & frequency_high != .
 		
 		* Alt times per day (for low, when present)
@@ -138,5 +148,65 @@ diet_text
 	
 	* total quantity (in mL):
 	gen tq = .
-	replace tq = quantity_high if quantity_ml == 1 & quantity_high != .
+	replace tq = quantity_high if quantity_ounce == 1 & quantity_high != .
+	replace tq = quantity_high*(XCONVX) if quantity_ml == 1 & quantity_high != .
+	replace tq = quantity_high*(XCONVX) if quantity_cc == 1 & quantity_high != .
+	* replace tq = quantity_high*(????) if quantity_kcal == 1 & quantity_high != .
+	
+	gen tq_l = .
+	replace tq_l = quantity_low if quantity_ounce == 1 & quantity_low != .
+	replace tq_l = quantity_low*(XCONVX) if quantity_ml == 1 & quantity_low != .
+	replace tq_l = quantity_low*(XCONVX) if quantity_cc == 1 & quantity_low != .
+	* replace tq = quantity_low*(????) if quantity_kcal == 1 & quantity_low != .
 
+	
+	stop
+	* TODO - stop here and check the quantity measure.  This should be a product of quantity and frequency measure.  
+	
+	
+	
+	
+	* BM vars:
+	
+	destring breast_milk_duration_low , replace
+	destring breast_milk_duration_high , replace
+	destring breast_milk_unclassified , replace
+	destring breast_milk_frequency_low , replace
+	destring breast_milk_frequency_high , replace
+	destring breast_milk_measured_hours , replace
+	destring breast_milk_measured_times , replace
+	destring breast_milk_measured_days , replace
+	destring breast_milk_measured_unclassifie , replace
+	
+	egen bm_quant_check = rowtotal(breast_milk_measured_hours breast_milk_measured_times breast_milk_measured_days breast_milk_measured_unclassifie)
+	assert bm_quant_check <= 1
+	
+	* BM quantity:
+	gen tf_bm = .
+	replace tf_bm = (24/breast_milk_frequency_high)*breast_milk_duration_high if breast_milk_duration_high != . & breast_milk_measured_hours == 1
+	replace tf_bm = (breast_milk_frequency_high)*breast_milk_duration_high if breast_milk_duration_high != . & breast_milk_measured_times == 1
+	
+	
+	
+	* This is probably the correct measure for a day measured value.  
+	replace tf_bm = (breast_milk_frequency_high)*breast_milk_duration_high if breast_milk_duration_high != . & breast_milk_measured_days == 1
+	
+
+	
+	* SOLIDS GROUP 
+	
+solids_mentioned 
+solids_quantity_low 
+solids_quantity_high 
+solids_quantity_ounces 
+solids_quantity_ML 
+solids_quantity_CC 
+solids_quantity_KCAL 
+solids_quantity_unclassified 
+
+solids_frequency_low 
+solids_frequency_high 
+solids_frequency_hours 
+solids_frequency_days 
+solids_frequency_times 
+solids_frequency_unclassified 
