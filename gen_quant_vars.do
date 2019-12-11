@@ -95,33 +95,48 @@ diet_text
 		gen tq = .
 			* There is much more to think through here and variables we want to make sure are nonmissing!  
 			
-		/*
-		QUANTITY MEASURES:
-		quantity_low quantity_high
-		
-		QUANTITY UNIT MEASURES:
-		quantity_ounces quantity_ml quantity_cc quantity_kcal quantity_unclassified
-		
-		FREQUENCY MEASURES:
-		frequency_low frequency_high
-		
-		FREQUENCY UNIT MEASURES:
-		frequency_measured_hours frequency_measured_days frequency_measured_times frequency_unclassified
-		
-		
-		*/
-		* start with: get times per day, then quantity.
-		
-		* Times Per Day:
+
+		* Times Per Day (this is for formula):
+		destring frequency_high, replace
+		destring frequency_low, replace
+			* Other formula vars:
+		destring formula_ad_lib, replace 
+			* look for problem records where there is more than one frequency measure recorded 
+		destring frequency_measured_days, replace
+		destring frequency_measured_hours, replace
+		destring frequency_measured_times, replace
+		egen freq_check = rowtotal(frequency_measured_*)
+		assert freq_check <= 1
+			* There is one bad value - what to do with it?  Drop or fix.  
 		gen tpd = .
-		replace tpd = frequency_high if frequency_measured_times == 1
-		replace tpd = 24/frequency_high if frequency  
+		replace tpd = frequency_high if frequency_measured_times == 1 & frequency_high != .
+		replace tpd = 24/frequency_high if frequency_measured_hours == 1  & frequency_high != .
+		replace tpd = frequency_high if frequency_measured_days == 1 & frequency_high != .
 		
+		* Alt times per day (for low, when present)
 		
+		gen tpd_l = .
+		replace tpd_l = frequency_low if frequency_measured_times == 1 & frequency_low != .
+		replace tpd_l = 24/frequency_low if frequency_measured_hours == 1 & frequency_low != .  
+		replace tpd_l = frequency_low if frequency_measured_days == 1 & frequency_low != .
 		
+		* probably check something about whether there are quantities present AND ad_lib == 1
+
 		
-		
-		
-		replace tq = quantity_ounces*quantity_high*frequency_low if frequency_measured_times == 1
-		replace tq = quantity_ounces*quantity_high*(24/frequency_measured_hours) if fequency_measured_hours == 1
-		replace tq = quantity_ounces*quantity_high*
+	* Quantity variables:
+	destring quantity_low, replace
+	destring quantity_high, replace
+	destring quantity_ounce, replace 
+	destring quantity_ml, replace
+	destring quantity_cc, replace
+	destring quantity_kcal, replace
+	destring quantity_unclassified, replace
+	
+	* check quantity variables
+	egen form_quant_check = rowtotal(quantity_ounce quantity_ml quantity_cc quantity_kcal quantity_unclassified)
+	assert form_quant_check <= 1
+	
+	* total quantity (in mL):
+	gen tq = .
+	replace tq = quantity_high if quantity_ml == 1 & quantity_high != .
+
