@@ -256,7 +256,7 @@ diet_text
 	destring solids_quantity_KCAL , replace 
 	destring solids_quantity_unclassified , replace 
 		* there is a "total quantity per day" category here missing, if that exists. There is one for the frequency measure.
-	
+		* none of these are available - no one records in this way.    Can do frequency but not total quantity.  
 	egen sol_q_check = rowtotal(solids_quantity_*)
 	replace solids_quantity_ounces = . if sol_q_check > 1 
 	replace solids_quantity_ML = . if sol_q_check > 1
