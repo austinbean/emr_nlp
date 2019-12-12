@@ -105,8 +105,21 @@ string_cleaner(test3)
 string_cleaner(test4)
 
 starr1 = [test1; test2; test3; test4]
-
-string_cleaner.(starr1)
-
+starr2 = [test1; test2; test3; test4]
 
 
+b1 = string_cleaner.(starr1)
+println(b1)
+
+
+	# doesn't work yet.
+function bthread(x)
+	row = size(x,1)
+	Threads.@threads for i = 1:row
+		string_cleaner(x[i])
+	end 
+	return x 
+end 
+
+b2 = bthread(starr2)
+println(b2)
