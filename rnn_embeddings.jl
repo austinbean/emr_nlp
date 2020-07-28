@@ -1,10 +1,7 @@
 # Embeddings Layer
 
 
-using Flux
-using Flux: onehot, onehotbatch, throttle, reset!
-using Embeddings
-using Functors
+
 
 
 
