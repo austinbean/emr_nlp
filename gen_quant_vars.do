@@ -1,6 +1,8 @@
 
 /*
 
+See data_imp_clean.do as well.  
+
 Split into several different, related ideas.  Want to classify: formula, BM, solids, juice, spitting up.  This is five separate ideas.  
 
 TODO - review codebook entry for frequency days.  
@@ -396,3 +398,6 @@ diet_text
 	
 * get rid of check variables:
 	drop *_check
+	
+	
+	// Just keep ID variables and the generated values, then merge back w/ the diet text.  
