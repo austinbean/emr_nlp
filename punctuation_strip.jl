@@ -18,8 +18,10 @@ Julia standard: http://www.pcre.org/current/doc/html/pcre2syntax.html
 	replace note_text = subinstr(note_text, "'", "", .)
 =#
 
-
-
+"""
+`string_cleaner(x::String)`
+runs a bunch of regexes to remove punctuation, set to lowercase, remove numbers, etc.
+"""
 function string_cleaner(x::String)
 		# replace(x, r""=>"")
 	x = lowercase(x)
@@ -111,7 +113,7 @@ starr2 = [test1; test2; test3; test4]
 b1 = string_cleaner.(starr1)
 println(b1)
 
-
+#=
 	# doesn't work yet.
 function bthread(x)
 	row = size(x,1)
@@ -123,3 +125,4 @@ end
 
 b2 = bthread(starr2)
 println(b2)
+=#
