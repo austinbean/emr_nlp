@@ -5,7 +5,8 @@
 
 
 
-# defined to just be an "E", which will be a matrix of Floats
+# Main embedding layer defined to just be an "E", which will be a matrix of Floats
+    # includes a function σ which might not be used.  
 struct Embed{A<:AbstractArray,F<:Function}
     E::A # embeddings
     σ::F # function 
