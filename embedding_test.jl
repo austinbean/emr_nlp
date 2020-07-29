@@ -19,6 +19,10 @@ include("/Users/austinbean/Desktop/programs/emr_nlp/s_split.jl")
 
 
 
+    # TODO - the issue is that the Embed layer is made w/ ALL of the words in the vocab,
+    # not just the words I need (which appear in the data), so the matrices are not conformable.  
+
+
 @with_kw mutable struct Args
     lr::Float64 = 1e-3        # learning rate
     V::Array{String} =[]      # the vocabulary
@@ -52,11 +56,11 @@ function LoadData()
     
         # Load the word embeddings and return the args type w/ that field updated.
     embtable = load_embeddings(Word2Vec)
-    args.V =  unique(embtable.vocab)
     args.E = embtable
 		# collect all unique words to make 1-h vectors. 
 	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
-	interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
+    args.V =  unique(allwords)
+    interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
 	all_data = [(x,y) for (x,y) in zip(interim,labels)] |> shuffle                      # pair data and labels, then randomize order
 		# separate test data and train data 
 	train_data = all_data[1:end-args.test_d]
@@ -105,12 +109,10 @@ end
 
 
 function RunIt()
+    @info("Loading Data...")
     test_data, train_data, argg = LoadData() # words, labels will be loaded
 	@info("Constructing Model...")
     scanner, encoder = build_model(argg)     # NB: scanner and encoder have to be created first.  
-    
-    # TODO - cannot apply train to this model.  Tr loss and testloss
-
 	loss(x, y)=  (model(x, scanner, encoder) - y)^2
 	testloss() = mean(loss(t...) for t in train_data)
 	opt = ADAM(argg.lr)
