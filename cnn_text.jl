@@ -5,6 +5,7 @@ using DataFrames
 using Query 
 using Flux
 using Flux: onehot, onehotbatch, throttle, reset!
+using Flux.Data: DataLoader
 using Embeddings
 using Embeddings: EmbeddingTable 
 using Functors
@@ -32,12 +33,14 @@ end
 
 
 function LoadData()
-		# Load and clean 
+        # Load and clean 
+    # TODO - add a shuffle somewhere early on.  
 	xfile = CSV.read("/Users/austinbean/Desktop/programs/sumr2020/very_fake_diet_data.csv");
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :Column1]));
     nobs::Int64 = size(words,1)
     words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
     maxlen = maximum(length.(split.(words)))                                            # longest sentence (in words)
+    println("max length: ", maxlen)
     words = PadSentence.(words, maxlen)                                                 # now all sentences are padded w/ <EOS> out to maxlen
     labels = filter( x-> !ismissing(x), xfile[!, :Column2]);
 	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
@@ -61,19 +64,26 @@ function LoadData()
         # 30 is max sentence length ⇒ map to 1st dim (this is the width of the data)
         # 1002 is the number of observations in the data. ⇒ map to 4th dim 
     c1 = permutedims(b1, [3,2,1,4]); # This is the right form, as far as I can tell.  
-    # collect as tuples
-    all_data = []
-    for i = 1:size(c1,4)
-        push!(all_data, (c1[:,:,:,i], labels[i]))
-    end 
-    Random.shuffle!(MersenneTwister(1234), all_data) # permute in place    
-    # separate test data and train data 
-    tt = Int(floor(0.7*size(all_data,1)))
-	train_data = all_data[1:tt]
-    test_data = all_data[end-tt+1:end]
-	return train_data, test_data
+    # collect as tuples  
+    # separate test data and train data - 70/30
+    tt = Int(floor(0.7*size(c1,1)))
+    ctrain = c1[:,:,:,1:tt];
+    ctest = c1[:,:,:,tt+1:end];
+    ltrain = labels[1:tt];
+    ltest = labels[tt+1:end];
+    # Now do: data_tuple = (c1, labels) for test and train 
+    trd = (ctrain, ltrain)
+    tsd = (ctest, ltest)
+	return trd, tsd
 end 
 
+trd, tsd = LoadData();
 
-m = Conv()
+    # this will require a reshape somewhere.
+        # after the convolutional layer there must be a reshape.
+m = Chain(Conv((3,1), 50=>128), 
+          MaxPool((2,1)),
+          x->reshape(x,:, size(x,4)), # need to understand the dimensions of this reshape 
+          Dense(1792, 1, identity) ) # now this has length 20-something.  
 
+m(trd[1])
