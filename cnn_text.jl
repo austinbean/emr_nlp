@@ -66,7 +66,7 @@ function LoadData()
     c1 = permutedims(b1, [3,2,1,4]); # This is the right form, as far as I can tell.  
     # collect as tuples  
     # separate test data and train data - 70/30
-    tt = Int(floor(0.7*size(c1,1)))
+    tt = Int(floor(0.7*size(c1,4)))
     ctrain = c1[:,:,:,1:tt];
     ctest = c1[:,:,:,tt+1:end];
     ltrain = labels[1:tt];
@@ -80,10 +80,21 @@ end
 trd, tsd = LoadData();
 
     # this will require a reshape somewhere.
-        # after the convolutional layer there must be a reshape.
-m = Chain(Conv((3,1), 50=>128), 
-          MaxPool((2,1)),
-          x->reshape(x,:, size(x,4)), # need to understand the dimensions of this reshape 
-          Dense(1792, 1, identity) ) # now this has length 20-something.  
-
+        # after the convolutional layer there must be a reshape to reduce dimensions for a dense layer.
+        # these dimensions need to be tracked so that after the reshape it's clear what input for Dense should be.  
+m = Chain(Conv((3,1), 50=>128),        # size here is 28 x 1 x 128 x 701
+          MaxPool((2,1)),              # size here is 14 x 1 x 128 x 701
+          x->reshape(x,:, size(x,4)),  # size here is 1792 x 701
+          Dense(1792,1, identity)      # size now is 1 x 701 - one prediction per observation.
+          )  
 m(trd[1])
+
+
+          #=
+
+, # resulting size is: (W x H x C) by Obs  
+ 
+          Dense(1792, 1, identity)
+Note on reshape: essentially the output in WxHxC form is stacked vertically over the 
+channels.
+=#
