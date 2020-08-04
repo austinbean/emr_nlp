@@ -69,8 +69,8 @@ function LoadData()
     tt = Int(floor(0.7*size(c1,4)))
     ctrain = c1[:,:,:,1:tt];
     ctest = c1[:,:,:,tt+1:end];
-    ltrain = labels[1:tt];
-    ltest = labels[tt+1:end];
+    ltrain = convert(Array{Float32,1}, labels[1:tt]);
+    ltest = convert(Array{Float32,1}, labels[tt+1:end]);
     # Now do: data_tuple = (c1, labels) for test and train 
     # trd = (ctrain, ltrain)
     # tsd = (ctest, ltest)
@@ -104,21 +104,14 @@ end
 function Run()
     trd, tsd = LoadData()
     m = model()
-    # there is a dimension mismatch in here?  
-    function loss(dataloader) 
-        l = 0f0
-        for (x,y) in dataloader 
-            l += Flux.mse(m(x),y)
-        end 
-        return l 
-    end 
+    loss(x,y) = Flux.mse(m(x), y)
     parms = Flux.params(m)
-    testloss() = loss(tsd)
+    testloss() = Flux.mse(m(tsd.data[1]), tsd.data[2]) 
     testloss()
-    opt = ADAM(1e-2)
     evalcb = () -> @show testloss()
-    for i = 1:10
-        Flux.train!(loss, parms, trd, opt) #, cb = throttle(evalcb, 1)
+    opt = ADAM(1e-2)
+    for i = 1:3
+        Flux.train!(loss, parms, trd, opt, cb = throttle(evalcb, 1)) #
     end 
 end 
 
