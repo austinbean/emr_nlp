@@ -72,42 +72,55 @@ function LoadData()
     ltrain = labels[1:tt];
     ltest = labels[tt+1:end];
     # Now do: data_tuple = (c1, labels) for test and train 
-    trd = (ctrain, ltrain)
-    tsd = (ctest, ltest)
+    # trd = (ctrain, ltrain)
+    # tsd = (ctest, ltest)
     # TODO: need to return some size information: longest sentence length will be variable.  
-	return trd, tsd
+	return Flux.Data.DataLoader(ctrain, ltrain; batchsize=100, shuffle = true), Flux.Data.DataLoader(ctest, ltest)
 end 
 
-trd, tsd = LoadData();
 
-    # this will require a reshape somewhere.
+
         # after the convolutional layer there must be a reshape to reduce dimensions for a dense layer.
         # these dimensions need to be tracked so that after the reshape it's clear what input for Dense should be. 
-        # TODO - this ends up in the wrong shape?   
-        # Conv can operate on a heigh dim after data change.  
-m = Chain(Conv((3,5), 1=>128),                # size here is 28 x 46 x 128 x 701
-          MaxPool((2,2)),                     # size here is 14 x 23 x 128 x 701
-          Conv((3,3), 128=>8, relu),          # size here is 12 x 21 x 8 x 701,
-          MaxPool((4,4)),                     # size here is 3 x 5 x 8 x 701
-          x->reshape(x,:, size(x,4)),         # size here is 120 x 701,  = 3 x 5 x 8
-          Dense(120,1, identity),             # size now is 1 x 701 - one prediction per observation.
-          x->reshape(x, size(x,2), size(x,1)) # just a transpose 
-          )  
-m(trd[1])
+        # Conv can operate on a height dim after data change. 
+function model() 
+    return m = Chain(Conv((3,5), 1=>128),                # size here is 28 x 46 x 128 x 701
+            MaxPool((2,2)),                     # size here is 14 x 23 x 128 x 701
+            Conv((3,3), 128=>8, relu),          # size here is 12 x 21 x 8 x 701,
+            MaxPool((4,4)),                     # size here is 3 x 5 x 8 x 701
+            x->reshape(x,:, size(x,4)),         # size here is 120 x 701,  = 3 x 5 x 8
+            Dense(120,1, identity),             # size now is 1 x 701 - one prediction per observation.
+            x->reshape(x, size(x,2), size(x,1)) # just a transpose 
+            ) 
+end  
+#m(trd[1])
 
-function loss(x,y)
-    (m(x) .- y).^2  # weird that I need to take a transpose here.  
+# function loss(x,y)
+#     (m(x) - y)^2  
+# end 
+
+
+# TODO - something not right here relative to RNN
+function Run()
+    trd, tsd = LoadData()
+    m = model()
+    # there is a dimension mismatch in here?  
+    function loss(dataloader) 
+        l = 0f0
+        for (x,y) in dataloader 
+            l += Flux.mse(m(x),y)
+        end 
+        return l 
+    end 
+    parms = Flux.params(m)
+    testloss() = loss(tsd)
+    testloss()
+    opt = ADAM(1e-2)
+    evalcb = () -> @show testloss()
+    for i = 1:10
+        Flux.train!(loss, parms, trd, opt) #, cb = throttle(evalcb, 1)
+    end 
 end 
 
-parms = Flux.params(m)
+Run()
 
-
-
-          #=
-
-, # resulting size is: (W x H x C) by Obs  
- 
-          Dense(1792, 1, identity)
-Note on reshape: essentially the output in WxHxC form is stacked vertically over the 
-channels.
-=#
