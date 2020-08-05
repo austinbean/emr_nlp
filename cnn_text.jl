@@ -27,7 +27,8 @@ include("/Users/austinbean/Desktop/programs/emr_nlp/rnn_embeddings.jl")
     test_d::Int = 300       # length of the testing set.
     maxw::Int = 30          # maximum number of words in a sentence 
     embeddim::Int = 50      # dimension of embedding 
-    tt::Float64 = 0.7
+    tt::Float64 = 0.7       # fraction of data train
+    epos::Int64 = 100       # epochs
 end
 
 
@@ -117,7 +118,7 @@ function Run()
     testloss()
     evalcb = () -> @show testloss()
     opt = ADAM(arr.lr)
-    for i = 1:3
+    for i = 1:arr.epos
         Flux.train!(loss, parms, trd, opt, cb = throttle(evalcb, 1)) #
     end 
 end 
