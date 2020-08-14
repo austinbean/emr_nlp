@@ -27,11 +27,13 @@ w/ the number of unique words in the data updated.
 function LoadData()
 		# Load and clean 
 	xfile = CSV.read("./data_labeled.csv");
-	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :Column1]));
+
+	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
+	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
 	words = string_cleaner.(words) ;	      # regex preprocessing to remove punctuation etc. 
 	mwords = maximum(length.(split.(words)))
 	words = map( x->x*" <EOS>", words) ;   # add <EOS> to the end of every sentence.
-	labels = filter( x-> !ismissing(x), xfile[!, :Column2]);
+	labels = filter( x-> !ismissing(x), xfile[!, :total_quantity]);
 		# create an instance of the type
 	args = Args()
 		# collect all unique words to make 1-h vectors. 
