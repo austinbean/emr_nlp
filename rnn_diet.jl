@@ -26,7 +26,7 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	xfile = CSV.read("./data_labeled.csv");
+	xfile = CSV.read("/Users/austinbean/Desktop/programs/sumr2020/data_labeled.csv");
 
 	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
@@ -41,10 +41,15 @@ function LoadData()
 	nwords = size(allwords,1)                                                           # how many unique words are there?
 	args.inpt_dim = nwords                                                              # # of unique words is dimension of input to first layer.
 	interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
-	all_data = [(x,y) for (x,y) in zip(interim,labels)] |> shuffle                      # pair data and labels, then randomize order
+	# all_data = [(x,y) for (x,y) in zip(interim,labels)] |> shuffle                      # pair data and labels, then randomize order
 		# separate test data and train data 
-	train_data = all_data[1:end-args.test_d]
-	test_data = all_data[end-args.test_d+1:end]
+	train_data = interim[1:end-args.test_d]
+	test_data = interim[end-args.test_d+1:end]
+
+	train_labels = labels[1:end-args.test_d]
+	test_labls = labels[end-args.test_d+1:end]
 		# Return args b/c nwords may have been updated.
-	return train_data, test_data, args
+		# change to train via epochs.
+	#Flux.Data.DataLoader(ctrain, ltrain; batchsize=100, shuffle = true), Flux.Data.DataLoader(ctest, ltest), args
+	return Flux.Data.DataLoader(train_data, train_labels; batchsize=100, shuffle = true), Flux.Data.DataLoader(test_data, test_labels), args
 end 
