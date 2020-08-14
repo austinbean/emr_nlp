@@ -51,13 +51,14 @@ function LoadData()
         # Load and clean 
     # TODO - add a shuffle somewhere early on.  
 	xfile = CSV.read("./data_labeled.csv");
-	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :Column1]));
+	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
     nobs = size(words,1)
+    # NB: longest sentence in training data is 153 words.  
     words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
     maxlen = maximum(length.(split.(words)))                                            # longest sentence (in words)
     args.maxw = maxlen
     words = PadSentence.(words, maxlen)                                                 # now all sentences are padded w/ <EOS> out to maxlen
-    labels = filter( x-> !ismissing(x), xfile[!, :Column2]);
+    labels = filter( x-> !ismissing(x), xfile[!, :total_quantity]);
 	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
     interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
         # send through the embeddings layer to go from one-hot encoded sentences to word embeddings for the sentence
