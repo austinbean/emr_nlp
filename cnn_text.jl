@@ -13,10 +13,10 @@ using Statistics: mean
 using Random
 using Parameters: @with_kw
 
-
-include("/Users/austinbean/Desktop/programs/emr_nlp/punctuation_strip.jl")
-include("/Users/austinbean/Desktop/programs/emr_nlp/s_split.jl")
-include("/Users/austinbean/Desktop/programs/emr_nlp/rnn_embeddings.jl")
+    # note: removed filepath.  
+include("./punctuation_strip.jl")
+include("./s_split.jl")
+include("./rnn_embeddings.jl")
 
 
 @with_kw mutable struct Args
@@ -50,7 +50,7 @@ function LoadData()
     args = Args()
         # Load and clean 
     # TODO - add a shuffle somewhere early on.  
-	xfile = CSV.read("/Users/austinbean/Desktop/programs/sumr2020/very_fake_diet_data.csv");
+	xfile = CSV.read("./data_labeled.csv");
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :Column1]));
     nobs = size(words,1)
     words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 

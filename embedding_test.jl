@@ -13,9 +13,9 @@ using Random: shuffle
 using Parameters: @with_kw
 
 
-include("/Users/austinbean/Desktop/programs/emr_nlp/rnn_embeddings.jl")
-include("/Users/austinbean/Desktop/programs/emr_nlp/punctuation_strip.jl")
-include("/Users/austinbean/Desktop/programs/emr_nlp/s_split.jl")
+include("./rnn_embeddings.jl")
+include("./punctuation_strip.jl")
+include("./s_split.jl")
 
 
 
@@ -45,7 +45,7 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	xfile = CSV.read("/Users/austinbean/Desktop/programs/sumr2020/very_fake_diet_data.csv");
+	xfile = CSV.read("./data_labeled.csv");
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :Column1]));
 	words = string_cleaner.(words) ;	      # regex preprocessing to remove punctuation etc. 
 	mwords = maximum(length.(split.(words)))
