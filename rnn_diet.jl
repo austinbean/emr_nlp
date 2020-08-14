@@ -47,7 +47,7 @@ function LoadData()
 	test_data = interim[end-args.test_d+1:end]
 
 	train_labels = labels[1:end-args.test_d]
-	test_labls = labels[end-args.test_d+1:end]
+	test_labels = labels[end-args.test_d+1:end]
 		# Return args b/c nwords may have been updated.
 		# change to train via epochs.
 	#Flux.Data.DataLoader(ctrain, ltrain; batchsize=100, shuffle = true), Flux.Data.DataLoader(ctest, ltest), args
