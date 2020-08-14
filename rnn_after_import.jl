@@ -63,11 +63,11 @@ end
 
 
 function RunIt()
-    test_data, train_data, argg = LoadData() # words, labels will be loaded
+    train_data, test_data,  argg = LoadData() # words, labels will be loaded
 	@info("Constructing Model...")
 	scanner, encoder = build_model(argg)     # NB: scanner and encoder have to be created first.  
 	loss(x, y)=  (model(x, scanner, encoder) - y)^2
-	testloss() = mean(loss(t...) for t in train_data)
+	testloss() = Flux.mse(model(test_data.data[1], scanner, encoder), test_data.data[2])
 	opt = ADAM(argg.lr)
 	ps = params(scanner, encoder)
 	evalcb = () -> @show testloss()
