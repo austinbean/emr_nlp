@@ -55,7 +55,7 @@ function LoadData()
     args = Args()
     
         # Load the word embeddings and return the args type w/ that field updated.
-    embtable = load_embeddings(Word2Vec)
+    embtable = load_embeddings(GloVe)
     args.E = embtable
 		# collect all unique words to make 1-h vectors. 
 	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
