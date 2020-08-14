@@ -62,7 +62,7 @@ function LoadData()
 	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
     interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
         # send through the embeddings layer to go from one-hot encoded sentences to word embeddings for the sentence
-    embtable = load_embeddings(Word2Vec) # load the embeddings 
+    embtable = load_embeddings(GloVe) # load the embeddings 
     embeddim = args.embeddim                                                                 # dimension of the embedding is constant
     e1 = Embed(allwords, embeddim, embtable)
     sh1 = e1.(interim)
