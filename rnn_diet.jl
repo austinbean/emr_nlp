@@ -26,7 +26,7 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	xfile = CSV.read("/Users/austinbean/Desktop/programs/sumr2020/data_labeled.csv");
+	xfile = CSV.read("./data_labeled.csv");
 
 	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
