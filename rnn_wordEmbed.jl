@@ -9,12 +9,11 @@ using Flux
 using Flux: onehot, onehotbatch, logitcrossentropy, reset!, throttle
 using Statistics: mean
 using Random
-
 using Parameters: @with_kw
 using Embeddings
 using Functors
 using Plots
-Pkg.add("GR")
+using GR
 
 f_path = "./data_labeled.csv"
 #Change this to ("./data_labeled.csv")
@@ -168,18 +167,18 @@ function training_model(file_path)
     modelAccuracy = DataFrame()
     modelAccuracy.Prediction = model_prediction
     modelAccuracy.Reality = real
-    CSV.write("modelResults.csv", modelAccuracy)
+    CSV.write("./modelResults.csv", modelAccuracy)
     
     #Export csv for loss values for each training round
     df = DataFrame()
     df.EpochNum = round_num
     df.LossVals = loss_values
-    CSV.write("test_loss.csv", df)
+    CSV.write("./test_loss.csv", df)
     
     #Export csv with the lowest root mean squared value from training
     export_RMSE = DataFrame()
     export_RMSE.RMSE_val = minimum(loss_df.LossVals)
-    CSV.write("rmse.csv", export_RMSE)
+    CSV.write("./rmse.csv", export_RMSE)
 
 end
 
