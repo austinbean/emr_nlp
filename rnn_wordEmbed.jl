@@ -2,26 +2,26 @@
 	# Change f_path to filepath of csv file with data
 	# Under FILES TO INCLUDE, change the filepaths to match your computer
 
-using Pkg
+
 using CSV
 using DataFrames
 using Flux
 using Flux: onehot, onehotbatch, logitcrossentropy, reset!, throttle
 using Statistics: mean
 using Random
-Pkg.add("Parameters")
+
 using Parameters: @with_kw
 using Embeddings
 using Functors
 using Plots
 Pkg.add("GR")
 
-f_path = "/Users/rachelwu/Desktop/very_fake_diet_data.csv"
+f_path = "./data_labeled.csv"
 #Change this to ("./data_labeled.csv")
 
 # -- FILES TO INCLUDE -- #
-include("/Users/rachelwu/Desktop/punctuation_strip.jl")
-include("/Users/rachelwu/Desktop/SUMR/Bean/rnn_embeddings.jl")
+include("./punctuation_strip.jl")
+include("./rnn_embeddings.jl")
 
 # -- Constants -- #
 const embed_table = load_embeddings(GloVe)
@@ -72,7 +72,7 @@ function getWords(array, d)
     return d
 end    
 
-# --  Recursive Neural Network Functions -- #
+# --  Recurrent Neural Network Functions -- #
 function load_data(file_path)
     df = CSV.File(file_path) |> DataFrame! 
     col1 = df[:, 1] 
@@ -88,7 +88,7 @@ function load_data(file_path)
     
     words = collect(skipmissing(keys(dict)))
     args.vocab = collect(skipmissing(keys(dict))) 
-    println(typeof(args.vocab))
+    #println(typeof(args.vocab))
     args.word_list_len = length(words)
     
     #Sentences not words
@@ -96,7 +96,7 @@ function load_data(file_path)
     for s in col1
         push!(items, s_split(s))
     end
-    println(items[1])
+    #println(items[1])
     #for loops: go through each sentence (which is broken down into individual words), go through classification
     dataset = [(onehotbatch(s, words, "<unk>"), c) 
                 for (s, c) in zip(items, col2)] |> shuffle
