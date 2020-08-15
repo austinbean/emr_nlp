@@ -69,11 +69,13 @@ function RunIt()
 	println("check2: ", typeof(train_data.data))
 
 	@info("Constructing Model...")
-	
+	# TODO - the data should be batched.  
+	# this is doable w/ dataloader as written now, but then LOSS and probably testloss have
+	# to be redefined so that they will operate correctly on that.  
 	scanner, encoder = build_model(argg)     # NB: scanner and encoder have to be created first.  
 	loss(x, y)=  (model(x, scanner, encoder) - y)^2
 	@info("Check Loss ")
-	println( loss(test_data.data[1], test_data.data[2]) )
+	println( loss(test_data, test_data.data[2]) ) # this couldn't possibly work
 	testloss() = Flux.mse(model(test_data.data[1], scanner, encoder), test_data.data[2])
 	@info("Check Testloss")
 	println(testloss())
