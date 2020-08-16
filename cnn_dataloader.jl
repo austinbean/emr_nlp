@@ -1,7 +1,7 @@
 function LoadDataCNN()
 	args = Args()
 
-	myData = CSV.read("./data_labeled.csv") |> DataFrame!     #Load Data
+	myData = CSV.read("./data_labeled_1.csv") |> DataFrame!     #Load Data
 	# CSV.read("./data_labeled.csv")
 
     #Clean Data
