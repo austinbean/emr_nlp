@@ -21,7 +21,7 @@ using Plots
     maxw::Int = 30          # maximum number of words in a sentence
     embeddim::Int = 50      # dimension of embedding
     tt::Float64 = 0.7       # fraction of data train
-    epos::Int64 = 100       # epochs
+    epos::Int64 = 30       # epochs
 end
 
 #Set WD
@@ -83,7 +83,7 @@ function Run()
     # temp = Array{Float64,1}
     temp_mse = Float64[]
 	temp_rmse = Float64[]
-    for i = 1:arr.epos
+    for i = 1:2
         println(i)
         Flux.train!(loss, parms, trd, opt, cb = throttle(evalcb, 1)) #
         push!(temp_mse, testloss())
