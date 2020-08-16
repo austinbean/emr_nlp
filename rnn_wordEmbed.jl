@@ -1,40 +1,45 @@
+#Author: Rachel Wu
+#8/15/20
+
+
 ####### Notes for New User:
-	# Change f_path to filepath of csv file with data
-	# Under FILES TO INCLUDE, change the filepaths to match your computer
+    # Change f_path to filepath of csv file with data
+        # in first line under training_model function ("./data_labeled.csv")
+    # Under FILES TO INCLUDE, change the filepaths to match your computer
+    # Under training_model() function, change the filepath for the 1 pdf and 
+        # 2 csvs (test_loss and rmse) that will be saved to your desired folder
+        # The pdf filepath is in the line beginning with savefig(....)
 
-
+using Pkg
 using CSV
 using DataFrames
 using Flux
 using Flux: onehot, onehotbatch, logitcrossentropy, reset!, throttle
 using Statistics: mean
 using Random
+Pkg.add("Parameters")
 using Parameters: @with_kw
 using Embeddings
+using Embeddings: EmbeddingTable
 using Functors
 using Plots
-using GR
+Pkg.add("GR")
 
-f_path = "./data_labeled.csv"
-#Change this to ("./data_labeled.csv")
 
 # -- FILES TO INCLUDE -- #
-include("./punctuation_strip.jl")
-include("./rnn_embeddings.jl")
-
-# -- Constants -- #
-const embed_table = load_embeddings(GloVe)
-const get_word_index = Dict(word=>ii for (ii,word) in enumerate(embed_table.vocab))
+include("/Users/rachelwu/Desktop/punctuation_strip.jl")
+include("/Users/rachelwu/Desktop/SUMR/Bean/rnn_embeddings.jl")
 
 # -- args-- #
-@with_kw mutable struct Args4
+@with_kw mutable struct Args5
     lr::Float64 = 1e-3     # Learning rate 
     N::Int = 3             # Number of perceptrons in hidden layer
+    emb_table::Embeddings.EmbeddingTable = EmbeddingTable(zeros(2,2), zeros(3)) # has to be initialized w/ something later
     embed_len::Int = 50    # Length of vector per each word embedding
     test_len::Int = 100    # Number of unique words in test data 
     word_list_len::Int = 0 # Total number of unique words
     vocab::Array{String, 1} = []  #All the words in the training data
-    throttle::Int = 1     # throttle timeout
+    throttle::Int = 10     # throttle timeout
 end
 
 # -- Helper Functions --#
@@ -71,12 +76,17 @@ function getWords(array, d)
     return d
 end    
 
-# --  Recurrent Neural Network Functions -- #
+# --  Recursive Neural Network Functions -- #
 function load_data(file_path)
+    #CSV.read("./data_labeled.csv")
     df = CSV.File(file_path) |> DataFrame! 
     col1 = df[:, 1] 
     col2 = df[:, 2]
-    args = Args4()
+    args = Args5()
+    
+    #Load the  word embeddings and assign back to args
+    eTable = load_embeddings(GloVe)
+    args.emb_table = eTable
     
     dict = Dict{String, Integer}()
     #fill dictionary with words from df
@@ -87,7 +97,7 @@ function load_data(file_path)
     
     words = collect(skipmissing(keys(dict)))
     args.vocab = collect(skipmissing(keys(dict))) 
-    #println(typeof(args.vocab))
+    println(typeof(args.vocab))
     args.word_list_len = length(words)
     
     #Sentences not words
@@ -95,7 +105,7 @@ function load_data(file_path)
     for s in col1
         push!(items, s_split(s))
     end
-    #println(items[1])
+    println(items[1])
     #for loops: go through each sentence (which is broken down into individual words), go through classification
     dataset = [(onehotbatch(s, words, "<unk>"), c) 
                 for (s, c) in zip(items, col2)] |> shuffle
@@ -106,7 +116,7 @@ function load_data(file_path)
 end
 
 function build_model(args)
-    scanner = Chain(Embed(args.vocab, args.embed_len, embed_table), LSTM(args.embed_len, args.N))
+    scanner = Chain(Embed(args.vocab, args.embed_len, args.emb_table), LSTM(args.embed_len, args.N))
     encoder = Dense(args.N, 1, identity)
     return scanner, encoder
 end
@@ -118,9 +128,10 @@ function model(x, scanner, encoder)
 end
 
 
-function training_model(file_path)
+function training_model()
+    f_path = "/Users/rachelwu/Desktop/very_fake_diet_data.csv"
     # Load Data
-    train_data, test_data, arg = load_data(file_path)
+    train_data, test_data, arg = load_data(f_path)
     #create variables for CSV file to track progress
     rounds = 15  
     round_num = []
@@ -133,7 +144,7 @@ function training_model(file_path)
     
     #logitcrossentropy for discrete (classification), MSE for continuous (regression/predictive)
     testloss() = mean(loss(t...) for t in test_data)
-    #evalcb = () -> @show testloss()
+    evalcb = () -> @show testloss()
     
     opt = ADAM(arg.lr)
     ps = params(scanner, encoder)
@@ -156,31 +167,41 @@ function training_model(file_path)
         append!(model_prediction,  model(prediction_arr[i], scanner, encoder))
     end
     real = getindex.(test_data, 2)
-    
-    #Create histogram of Results vs Model Prediction -> changes this to  percent accurate later
-    histogram(model_results.Reality, bins = 10:5:maximum(model_results.Reality), label  = "Real Values")
-    display(histogram!(model_results.Prediction, bins = 0:1:(maximum(model_results.Prediction)+1), 
-            label = "Model Predictions", xlabel = "Value (Ounces of Milk)", ylabel = "Number of Occurances", 
-            title = "RNN Model Predictions vs Real Value"))
-    
+
     #Export csv of data of predictions for histogram for outside-function use
     modelAccuracy = DataFrame()
     modelAccuracy.Prediction = model_prediction
     modelAccuracy.Reality = real
-    CSV.write("./modelResults.csv", modelAccuracy)
+    #Change file path here
+    CSV.write("/Users/rachelwu/Desktop/SUMR/Bean/rnnModelResults.csv", modelAccuracy)
+
+    #Create histogram of Results vs Model Prediction -> changes this to  percent accurate later
+    Plots.histogram(modelAccuracy.Reality, bins = 10:5:maximum(modelAccuracy.Reality), label  = "Real Values")
+    Plots.histogram!(modelAccuracy.Prediction, bins = 0:1:(maximum(modelAccuracy.Prediction)+1), 
+            label = "Model Predictions", xlabel = "Value (Ounces of Milk)", ylabel = "Number of Occurances", 
+            title = "RNN Model Predictions vs Real Value")
+    savefig("/Users/rachelwu/Desktop/SUMR/Bean/histogram.pdf")
     
     #Export csv for loss values for each training round
     df = DataFrame()
     df.EpochNum = round_num
     df.LossVals = loss_values
-    CSV.write("./test_loss.csv", df)
+    #Change file path here
+    CSV.write("/Users/rachelwu/Desktop/SUMR/Bean/test_loss.csv", df)
+
+    #Plot the loss function
+    x = df.EpochNum; y = df.LossVals; # These are the plotting data
+    plot(x, y, xlabel = "Number of Times Trained", ylabel = "Loss Function",
+        title = "Plotting the Loss Function of the RNN Model", legend = false)
+    savefig("/Users/rachelwu/Desktop/SUMR/Bean/lossFxnPlot.pdf")
     
     #Export csv with the lowest root mean squared value from training
     export_RMSE = DataFrame()
-    export_RMSE.RMSE_val = minimum(loss_df.LossVals)
-    CSV.write("./rmse.csv", export_RMSE)
+    export_RMSE.RMSE_val = minimum(df.LossVals)
+    #Change file path here
+    CSV.write("/Users/rachelwu/Desktop/SUMR/Bean/rmse.csv", export_RMSE)
 
 end
 
 # --  Training Model --  # 
-training_model(f_path)
+training_model()
