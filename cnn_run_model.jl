@@ -65,23 +65,14 @@ end
 	savefig(h1, "./CNN_test_mhistogram.pdf")
 end =#
 
-function plotResults(df::DataFrame)
-    gr() #Create backend
-    p1 = plot(df[:,1], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (MSE)")
-    p2 = plot(df[:,2], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (RMSE)")
-    h1 = histogram(m(tsd.data[1]),tsd.data[2], xlabel = "Food Value", ylabel = "Number of Occurences")
-    CSV.write("./cnn_results.csv", myResults)
-    plot(p1,p2,h1, layout = 3)
-    savefig(p1, "./CNN_test_mse.pdf")
-    savefig(p2, "./CNN_test_rmse.pdf")
-    savefig(h1, "./CNN_test_histogram.pdf")
-end
+
 
 function Run()
     trd, tsd, arr = LoadDataCNN()
     c1 = calculateDenseParam(arr.maxw)
     m = model(arr, c1)
     loss(x,y) = Flux.mse(m(x), y)
+    println(loss(trd.data[1], trd.data[2]))
     parms = Flux.params(m)
     testloss() = Flux.mse(m(tsd.data[1]), tsd.data[2])
 	rmse_func() = sqrt(Flux.mse(m(tsd.data[1]), tsd.data[2]))
@@ -92,14 +83,27 @@ function Run()
     # temp = Array{Float64,1}
     temp_mse = Float64[]
 	temp_rmse = Float64[]
-    for i = 1:arr.epos
+    for i = 1:2#arr.epos
         println(i)
         Flux.train!(loss, parms, trd, opt, cb = throttle(evalcb, 1)) #
         push!(temp_mse, testloss())
 		push!(temp_rmse, rmse_func())
     end
     myResults.test_loss_mse = temp_mse
-	myResults.temp_rmse = temp_rmse
+    myResults.temp_rmse = temp_rmse
+    
+    function plotResults(df::DataFrame)
+        gr() #Create backend
+        p1 = plot(df[:,1], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (MSE)")
+        p2 = plot(df[:,2], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (RMSE)")
+        # NB: tsd does not exist outside the scope of Run()
+        h1 = histogram(m(tsd.data[1]),tsd.data[2], xlabel = "Food Value", ylabel = "Number of Occurences")
+        CSV.write("./cnn_results.csv", myResults)
+        plot(p1,p2,h1, layout = 3)
+        savefig(p1, "./CNN_test_mse.pdf")
+        savefig(p2, "./CNN_test_rmse.pdf")
+        savefig(h1, "./CNN_test_histogram.pdf")
+    end
 
     plotResults(myResults)
 end
