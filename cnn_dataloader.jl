@@ -1,7 +1,7 @@
 function LoadDataCNN()
 	args = Args()
 
-	myData = CSV.read("./data_labeled_1.csv") |> DataFrame!     #Load Data
+	myData = CSV.read("./data_labeled.csv") |> DataFrame!     #Load Data
 	# CSV.read("./data_labeled.csv")
 
     #Clean Data
@@ -22,10 +22,7 @@ function LoadDataCNN()
 
     uniqueWords = collect(keys(lexiconFreq)) #Obtain the unique words
     uniqueWords = push!(uniqueWords, "<UNK>") #Add our unknown symbol to the list of words
-    N = length(uniqueWords)
-
-    args = Args()
-    args.inpt_dim = N
+    args.inpt_dim = length(uniqueWords)
 
     #Create oneHotVectors from these words
     oneHotWords = map(word -> Flux.onehotbatch(word, uniqueWords, "<UNK>"), padded_sentences)
