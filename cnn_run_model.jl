@@ -96,7 +96,7 @@ function Run()
         println(i)
         Flux.train!(loss, parms, trd, opt, cb = throttle(evalcb, 1)) #
         push!(temp_mse, testloss())
-		push!(temp_rmse, testloss())
+		push!(temp_rmse, rmse_func())
     end
     myResults.test_loss_mse = temp_mse
 	myResults.temp_rmse = temp_rmse
