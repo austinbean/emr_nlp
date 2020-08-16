@@ -53,7 +53,7 @@ function model(args, c1::Int64)
 end
 
 
-function plotResults(df::DataFrame)
+#= function plotResults(df::DataFrame)
     plotly() #Create backend
     p1 = plot(df[:,1], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (MSE)")
 	p2 = plot(df[:,2], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (RMSE)")
@@ -63,6 +63,18 @@ function plotResults(df::DataFrame)
 	savefig(p1, "./CNN_test_mse.pdf")
 	savefig(p2, "./CNN_test_rmse.pdf")
 	savefig(h1, "./CNN_test_mhistogram.pdf")
+end =#
+
+function plotResults(df::DataFrame)
+    gr() #Create backend
+    p1 = plot(df[:,1], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (MSE)")
+    p2 = plot(df[:,2], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (RMSE)")
+    h1 = histogram(m(tsd.data[1]),tsd.data[2], xlabel = "Food Value", ylabel = "Number of Occurences")
+    CSV.write("./cnn_results.csv", myResults)
+    plot(p1,p2,h1, layout = 3)
+    savefig(p1, "./CNN_test_mse.pdf")
+    savefig(p2, "./CNN_test_rmse.pdf")
+    savefig(h1, "./CNN_test_histogram.pdf")
 end
 
 function Run()
@@ -88,18 +100,6 @@ function Run()
     end
     myResults.test_loss_mse = temp_mse
 	myResults.temp_rmse = temp_rmse
-
-	function plotResults(df::DataFrame)
-	    gr() #Create backend
-	    p1 = plot(df[:,1], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (MSE)")
-		p2 = plot(df[:,2], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (RMSE)")
-		h1 = histogram(m(tsd.data[1]),tsd.data[2], xlabel = "Food Value", ylabel = "Number of Occurences")
-		CSV.write("./cnn_results.csv", myResults)
-		plot(p1,p2,h1, layout = 3)
-		savefig(p1, "./CNN_test_mse.pdf")
-		savefig(p2, "./CNN_test_rmse.pdf")
-		savefig(h1, "./CNN_test_histogram.pdf")
-	end
 
     plotResults(myResults)
 end
