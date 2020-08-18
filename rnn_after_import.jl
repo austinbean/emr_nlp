@@ -10,6 +10,8 @@ using Flux: onehot, onehotbatch, throttle, reset!
 using Statistics: mean
 using Random: shuffle
 using Parameters: @with_kw
+using Plots 
+
 
  # /Users/austinbean/Desktop/programs/emr_nlp
 include("./punctuation_strip.jl")
@@ -27,7 +29,7 @@ argument, where in LoadData() this is updated to the number of words.
 This is passed back after updating w/in the LoadData() function.
 """
 function build_model(args)
-	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N))
+	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N))
 	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
 	return scanner, encoder 
 end 
@@ -59,7 +61,14 @@ end
 
 
 
+#=
 
+dataloader returns....
+Tuple{Array{Flux.OneHotMatrix{Array{Flux.OneHotVector,1}},1},Array{Int64,1}}
+Array{Flux.OneHotMatrix{Array{Flux.OneHotVector,1}},1}
+
+This is a huge pain.
+=#
 
 
 function RunIt()
@@ -73,18 +82,63 @@ function RunIt()
 	# this is doable w/ dataloader as written now, but then LOSS and probably testloss have
 	# to be redefined so that they will operate correctly on that.  
 	scanner, encoder = build_model(argg)     # NB: scanner and encoder have to be created first.  
-	loss(x, y)=  (model(x, scanner, encoder) - y)^2
+	loss(x, y)=  Flux.mse(model(x, scanner, encoder),y)
+	#loss(x,y)
+
+	function loss2(x,y)
+		l = 0.0f0
+		for i = 1:length(x)
+			l += (model(x[i], scanner, encoder)-y[i])^2
+		end 
+		return l/length(x) 
+	end 
+
 	@info("Check Loss ")
-	println( loss(test_data, test_data.data[2]) ) # this couldn't possibly work
-	testloss() = Flux.mse(model(test_data.data[1], scanner, encoder), test_data.data[2])
+	println( loss(test_data.data[1][1], test_data.data[2][1]) ) 
+	function testloss()
+		l = 0.0f0 
+		for i = 1:length(test_data)
+			l += loss(test_data.data[1][i], test_data.data[2][i])
+		end 
+		return l 
+	end
+	# idea: do this as mean( for t in test_data)
 	@info("Check Testloss")
 	println(testloss())
 	opt = ADAM(argg.lr)
 	ps = params(scanner, encoder)
 	evalcb = () -> @show testloss()
-	for i = 1:50
-		Flux.train!(loss, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
-    end 
+	loss_v = Array{Float64,1}()
+	for i = 1:35
+		@info("At ", i)
+		Flux.train!(loss2, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
+		push!(loss_v, testloss())
+	end 
+	
+	pred_vals = Array{Float32,1}()
+	actual = Array{Float32,1}()
+	for i in 1:length(test_data)
+		push!(actual, convert(Float32, test_data.data[2][i]))
+		push!(pred_vals, model(test_data.data[1][i], scanner, encoder))
+	end 
+	sv = convert(DataFrame, hcat(pred_vals, actual))	
+
+	Plots.histogram(sv.x2, bins = 10:5:maximum(sv.x2), label  = "Real Values")
+	Plots.histogram!(sv.x1, bins = 0:1:(maximum(sv.x1)+1), 
+			label = "Model Predictions", 
+			xlabel = "Value (Ounces)", 
+			ylabel = "Number of Occurences", 
+            title = "RNN Model Predictions vs Real Values")
+	savefig("./hist1.png")	
+	
+	df1 = convert(DataFrame, hcat(loss_v, zeros(length(loss_v))))
+	plot(df1.x1, [1:size(loss_v,1)], xlabel = "Number of Times Trained", ylabel = "Loss Function",
+        title = "Plotting the Loss Function of the RNN Model", legend = false)
+    savefig("./lossf.png")
+
+	CSV.write("./t_l_1.csv", convert(DataFrame, hcat(loss_v, zeros(length(loss_v)))))
+
+
     # next step... predict, distribution of predictions, etc.  
 end 
 

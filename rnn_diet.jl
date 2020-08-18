@@ -9,9 +9,9 @@
 @with_kw mutable struct Args
     lr::Float64 = 1e-3      # learning rate
 	inpt_dim::Int  = 813    # number of words.  size(allwords,1)
-	N::Int = 100            # Number of perceptrons in hidden layer - free parameter
+	N::Int = 256            # Number of perceptrons in hidden layer - free parameter
 	throttle::Int = 5       # throttle timeout
-	test_d::Int = 300       # length of the testing set.
+	test_d::Int = 600       # length of the testing set.
 end
 
 

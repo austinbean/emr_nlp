@@ -17,18 +17,16 @@ using Flux
 using Flux: onehot, onehotbatch, logitcrossentropy, reset!, throttle
 using Statistics: mean
 using Random
-Pkg.add("Parameters")
 using Parameters: @with_kw
 using Embeddings
 using Embeddings: EmbeddingTable
 using Functors
 using Plots
-Pkg.add("GR")
 
 
 # -- FILES TO INCLUDE -- #
-include("/Users/rachelwu/Desktop/punctuation_strip.jl")
-include("/Users/rachelwu/Desktop/SUMR/Bean/rnn_embeddings.jl")
+include("./punctuation_strip.jl")
+include("./rnn_embeddings.jl")
 
 # -- args-- #
 @with_kw mutable struct Args5
@@ -129,7 +127,7 @@ end
 
 
 function training_model()
-    f_path = "/Users/rachelwu/Desktop/very_fake_diet_data.csv"
+    f_path = "./data_labeled.csv"
     # Load Data
     train_data, test_data, arg = load_data(f_path)
     #create variables for CSV file to track progress
@@ -173,33 +171,33 @@ function training_model()
     modelAccuracy.Prediction = model_prediction
     modelAccuracy.Reality = real
     #Change file path here
-    CSV.write("/Users/rachelwu/Desktop/SUMR/Bean/rnnModelResults.csv", modelAccuracy)
+    CSV.write("./rnnModelResults.csv", modelAccuracy)
 
     #Create histogram of Results vs Model Prediction -> changes this to  percent accurate later
     Plots.histogram(modelAccuracy.Reality, bins = 10:5:maximum(modelAccuracy.Reality), label  = "Real Values")
     Plots.histogram!(modelAccuracy.Prediction, bins = 0:1:(maximum(modelAccuracy.Prediction)+1), 
             label = "Model Predictions", xlabel = "Value (Ounces of Milk)", ylabel = "Number of Occurances", 
             title = "RNN Model Predictions vs Real Value")
-    savefig("/Users/rachelwu/Desktop/SUMR/Bean/histogram.pdf")
+    savefig("./histogram.png")
     
     #Export csv for loss values for each training round
     df = DataFrame()
     df.EpochNum = round_num
     df.LossVals = loss_values
     #Change file path here
-    CSV.write("/Users/rachelwu/Desktop/SUMR/Bean/test_loss.csv", df)
+    CSV.write("./test_loss.csv", df)
 
     #Plot the loss function
     x = df.EpochNum; y = df.LossVals; # These are the plotting data
     plot(x, y, xlabel = "Number of Times Trained", ylabel = "Loss Function",
         title = "Plotting the Loss Function of the RNN Model", legend = false)
-    savefig("/Users/rachelwu/Desktop/SUMR/Bean/lossFxnPlot.pdf")
+    savefig("./lossFxnPlot.png")
     
     #Export csv with the lowest root mean squared value from training
     export_RMSE = DataFrame()
     export_RMSE.RMSE_val = minimum(df.LossVals)
     #Change file path here
-    CSV.write("/Users/rachelwu/Desktop/SUMR/Bean/rmse.csv", export_RMSE)
+    CSV.write("./rmse.csv", export_RMSE)
 
 end
 

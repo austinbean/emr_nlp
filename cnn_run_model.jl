@@ -21,7 +21,7 @@ using Plots
     maxw::Int = 30          # maximum number of words in a sentence
     embeddim::Int = 50      # dimension of embedding
     tt::Float64 = 0.7       # fraction of data train
-    epos::Int64 = 30       # epochs
+    epos::Int64 = 20       # epochs
 end
 
 #Set WD
@@ -83,7 +83,7 @@ function Run()
     # temp = Array{Float64,1}
     temp_mse = Float64[]
 	temp_rmse = Float64[]
-    for i = 1:2
+    for i = 1:arr.epos
         println(i)
         Flux.train!(loss, parms, trd, opt, cb = throttle(evalcb, 1)) #
         push!(temp_mse, testloss())
@@ -93,16 +93,18 @@ function Run()
     myResults.temp_rmse = temp_rmse
     
     function plotResults(df::DataFrame)
-        plotly() #Create backend
+        gr() #Create backend
         p1 = plot(df[:,1], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (MSE)")
         p2 = plot(df[:,2], markersize = 2, label = "Training", xlabel = "Number of Times Trained",ylabel = "Loss Function (RMSE)")
         # NB: tsd does not exist outside the scope of Run()
-        h1 = histogram(m(tsd.data[1]),tsd.data[2], xlabel = "Food Value", ylabel = "Number of Occurences")
+        h1 = histogram(m(tsd.data[1]), bins = 0:2:maximum(m(tsd.data[1]))+1, label = "Predictions")
+        histogram!(tsd.data[2], bins = 0:2:maximum(tsd.data[2])+1, xlabel = "Food Value", ylabel = "Number of Occurences", label = "Actual Values")
+        savefig(h1, "./CNN_test_histogram.pdf")
         CSV.write("./cnn_results.csv", myResults)
         plot(p1,p2,h1, layout = 3)
-        savefig(p1, "./CNN_test_mse.png")
-        savefig(p2, "./CNN_test_rmse.png")
-        savefig(h1, "./CNN_test_histogram.png")
+        savefig(p1, "./CNN_test_mse.pdf")
+        savefig(p2, "./CNN_test_rmse.pdf")
+        savefig(h1, "./CNN_test_histogram.pdf")
     end
 
     plotResults(myResults)
