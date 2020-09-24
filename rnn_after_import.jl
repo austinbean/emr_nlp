@@ -73,9 +73,7 @@ This is a huge pain.
 
 function RunIt()
     train_data, test_data,  argg = LoadData() # words, labels will be loaded
-	@info("Checking types ")
-	println("check1: ", typeof(train_data), " ", typeof(test_data))
-	println("check2: ", typeof(train_data.data))
+	epoc = 35
 
 	@info("Constructing Model...")
 	# TODO - the data should be batched.  
@@ -83,38 +81,54 @@ function RunIt()
 	# to be redefined so that they will operate correctly on that.  
 	scanner, encoder = build_model(argg)     # NB: scanner and encoder have to be created first.  
 	loss(x, y)=  Flux.mse(model(x, scanner, encoder),y)
-	#loss(x,y)
 
-	function loss2(x,y)
-		l = 0.0f0
-		for i = 1:length(x)
-			l += (model(x[i], scanner, encoder)-y[i])^2
-		end 
-		return l/length(x) 
-	end 
+
 
 	@info("Check Loss ")
 	println( loss(test_data.data[1][1], test_data.data[2][1]) ) 
-	function testloss()
-		l = 0.0f0 
-		for i = 1:length(test_data)
-			l += loss(test_data.data[1][i], test_data.data[2][i])
-		end 
-		return l 
-	end
-	# idea: do this as mean( for t in test_data)
+
+		# the below line worked but never terminated...?    Or maybe it is not doing what I think?  
+	@info("why is this line slow?")
+	@time [loss(x, y) for x in test_data.data[1] for y in test_data.data[2] ]
+	
 	@info("Check Testloss")
+		# this worked but was slow in global scope in REPL .  
+	function testloss()
+		l = 0.0
+		N = size(test_data.data[1],1)
+		for i = 1:N
+			l+=loss(test_data.data[1][i], test_data.data[2][i])
+		end
+		return l/N 
+	end		
 	println(testloss())
+	@info("timing testloss")
+	@time testloss()
 	opt = ADAM(argg.lr)
 	ps = params(scanner, encoder)
 	evalcb = () -> @show testloss()
 	loss_v = Array{Float64,1}()
-	for i = 1:35
+	# TODO - how to make sure this is being trained on the batches?  rather than the whole thing.  
+	for i = 1:epoc
 		@info("At ", i)
 		Flux.train!(loss2, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
 		push!(loss_v, testloss())
 	end 
 	
+
+
+    # next step... predict, distribution of predictions, etc.  
+end 
+
+RunIt()
+
+end 
+
+
+#=
+
+"Postestimation..."
+
 	pred_vals = Array{Float32,1}()
 	actual = Array{Float32,1}()
 	for i in 1:length(test_data)
@@ -139,9 +153,5 @@ function RunIt()
 	CSV.write("./t_l_1.csv", convert(DataFrame, hcat(loss_v, zeros(length(loss_v)))))
 
 
-    # next step... predict, distribution of predictions, etc.  
-end 
+=#
 
-RunIt()
-
-end 
