@@ -59,64 +59,30 @@ function model(x, scanner, encoder)
 	encoder(state)[1]                 # this returns a vector of a single element...  annoying.  
 end 
 
-
-
 #=
-
-dataloader returns....
-Tuple{Array{Flux.OneHotMatrix{Array{Flux.OneHotVector,1}},1},Array{Int64,1}}
-Array{Flux.OneHotMatrix{Array{Flux.OneHotVector,1}},1}
-
-This is a huge pain.
+annoyingly... batching the data means that train_data is an iterable of vectors,
+but vectors do not have the field .data as above, so I get an error in training.  
 =#
 
 
 function RunIt()
     train_data, test_data,  argg = LoadData() # words, labels will be loaded
-	epoc = 35
-
+	epoc = 3
 	@info("Constructing Model...")
-	# TODO - the data should be batched.  
-	# this is doable w/ dataloader as written now, but then LOSS and probably testloss have
-	# to be redefined so that they will operate correctly on that.  
 	scanner, encoder = build_model(argg)     # NB: scanner and encoder have to be created first.  
-	loss(x, y)=  Flux.mse(model(x, scanner, encoder),y)
-
-
-
-	@info("Check Loss ")
-	println( loss(test_data.data[1][1], test_data.data[2][1]) ) 
-
-		# the below line worked but never terminated...?    Or maybe it is not doing what I think?  
-	@info("why is this line slow?")
-	@time [loss(x, y) for x in test_data.data[1] for y in test_data.data[2] ]
-	
-	@info("Check Testloss")
-		# this worked but was slow in global scope in REPL .  
-	function testloss()
-		l = 0.0
-		N = size(test_data.data[1],1)
-		for i = 1:N
-			l+=loss(test_data.data[1][i], test_data.data[2][i])
-		end
-		return l/N 
-	end		
-	println(testloss())
-	@info("timing testloss")
-	@time testloss()
+	submod(x) = model(x, scanner, encoder)   # maybe this is a workaround?  This broadcasts 
+	loss(x, y)=  Flux.mse(submod.(x),y)      # broadcasting the "sub-model" on the input x.
+	@info("Initial Loss: ", loss(test_data.data[1], test_data.data[2]) )
+	testloss() = loss(test_data.data[1], test_data.data[2])	
 	opt = ADAM(argg.lr)
 	ps = params(scanner, encoder)
 	evalcb = () -> @show testloss()
 	loss_v = Array{Float64,1}()
-	# TODO - how to make sure this is being trained on the batches?  rather than the whole thing.  
 	for i = 1:epoc
 		@info("At ", i)
-		Flux.train!(loss2, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
+		Flux.train!(loss, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
 		push!(loss_v, testloss())
 	end 
-	
-
-
     # next step... predict, distribution of predictions, etc.  
 end 
 
