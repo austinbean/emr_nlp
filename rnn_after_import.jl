@@ -1,5 +1,13 @@
 # use rnn_diet.jl to define a function to import the data, then put an include statement at the top of this one.
 
+#=
+Experiments to do:
+- regularization 
+- hidden layers.
+- node changes: 64 128 256 512 1024 2048  
+=#
+
+
 module Runner
 
 using CSV 
@@ -8,19 +16,71 @@ using Query
 using Flux
 using Flux: onehot, onehotbatch, throttle, reset!
 using Statistics: mean
-using Random: shuffle
+using Random: shuffle, seed! 
 using Parameters: @with_kw
 using Plots 
+using Tables 
 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
 include("./punctuation_strip.jl")
 include("./s_split.jl")
-include("./rnn_diet.jl")
+#include("./rnn_diet.jl")
+
+@with_kw mutable struct Args
+    lr::Float64 = 1e-3      # learning rate
+	inpt_dim::Int  = 813    # number of words.  size(allwords,1)
+	N::Int = 256            # Number of perceptrons in hidden layer - free parameter
+	throttle::Int = 1       # throttle timeout
+	test_d::Int = 600       # length of the testing set.
+end
+
+
 
 
 """
-`build_model(args)`
+`LoadData()`
+
+This creates test and training data and returns them.  Also returns an instance of 'args' type
+w/ the number of unique words in the data updated.
+
+"""
+function LoadData()
+		# Load and clean 
+	xfile = CSV.read("./data_labeled.csv", DataFrame);
+
+	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
+	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
+	words = string_cleaner.(words) ;	      # regex preprocessing to remove punctuation etc. 
+	mwords = maximum(length.(split.(words)))
+	words = map( x->x*" <EOS>", words) ;   # add <EOS> to the end of every sentence.
+	labels = filter( x-> !ismissing(x), xfile[!, :total_quantity]);
+		# create an instance of the type
+	args = Args()
+		# collect all unique words to make 1-h vectors. 
+	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
+	nwords = size(allwords,1)                                                           # how many unique words are there?
+	args.inpt_dim = nwords                                                              # # of unique words is dimension of input to first layer.
+	interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
+	# all_data = [(x,y) for (x,y) in zip(interim,labels)] |> shuffle                      # pair data and labels, then randomize order
+		# separate test data and train data 
+	train_data = interim[1:end-args.test_d]
+	test_data = interim[end-args.test_d+1:end]
+
+
+	train_labels = labels[1:end-args.test_d]
+	test_labels = labels[end-args.test_d+1:end]
+		# Return args b/c nwords may have been updated.
+		# change to train via epochs.
+	#Flux.Data.DataLoader(ctrain, ltrain; batchsize=100, shuffle = true), Flux.Data.DataLoader(ctest, ltest), args
+		# TODO - there is a deprecation here on the DataLoader type - it doesn't want train_data... anymore.  Rewrite.  
+	return Flux.Data.DataLoader(train_data, train_labels; batchsize=100, shuffle = true), Flux.Data.DataLoader((test_data, test_labels)), args
+end 
+
+
+
+"""
+`one_layer(args)`
 Takes as an argument the parameters in the "args" type.  
 Returns two things: a 'scanner' and an 'encoder'.  
 Dimension of the input needs to be # of unique words, 
@@ -28,8 +88,55 @@ so Dense(args.inpt_dim) takes an 'args.inpt_dim' type
 argument, where in LoadData() this is updated to the number of words.  
 This is passed back after updating w/in the LoadData() function.
 """
-function build_model(args)
+function one_layers(args)
+	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N))
+	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
+	return scanner, encoder 
+end 
+
+
+
+"""
+`two_layers(args)`
+Takes as an argument the parameters in the "args" type.  
+Returns two things: a 'scanner' and an 'encoder'.  
+Dimension of the input needs to be # of unique words, 
+so Dense(args.inpt_dim) takes an 'args.inpt_dim' type 
+argument, where in LoadData() this is updated to the number of words.  
+This is passed back after updating w/in the LoadData() function.
+"""
+function two_layers(args)
 	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N))
+	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
+	return scanner, encoder 
+end 
+
+"""
+`three_layers(args)`
+Takes as an argument the parameters in the "args" type.  
+Returns two things: a 'scanner' and an 'encoder'.  
+Dimension of the input needs to be # of unique words, 
+so Dense(args.inpt_dim) takes an 'args.inpt_dim' type 
+argument, where in LoadData() this is updated to the number of words.  
+This is passed back after updating w/in the LoadData() function.
+"""
+function three_layers(args)
+	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
+	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
+	return scanner, encoder 
+end 
+
+"""
+`four_layers(args)`
+Takes as an argument the parameters in the "args" type.  
+Returns two things: a 'scanner' and an 'encoder'.  
+Dimension of the input needs to be # of unique words, 
+so Dense(args.inpt_dim) takes an 'args.inpt_dim' type 
+argument, where in LoadData() this is updated to the number of words.  
+This is passed back after updating w/in the LoadData() function.
+"""
+function four_layers(args)
+	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
 	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
 	return scanner, encoder 
 end 
@@ -59,17 +166,15 @@ function model(x, scanner, encoder)
 	encoder(state)[1]                 # this returns a vector of a single element...  annoying.  
 end 
 
-#=
-annoyingly... batching the data means that train_data is an iterable of vectors,
-but vectors do not have the field .data as above, so I get an error in training.  
-=#
 
-
+	# TODO: regularization via penalty as, e.g., loss = mse(...) + sum(abs2, params), so e.g., scanner.W 
 function RunIt()
-    train_data, test_data,  argg = LoadData() # words, labels will be loaded
-	epoc = 3
+	seed!(323) 
+	train_data, test_data,  argg = LoadData() # words, labels will be loaded
+	epoc = 100
 	@info("Constructing Model...")
-	scanner, encoder = build_model(argg)     # NB: scanner and encoder have to be created first.  
+	scanner, encoder = four_layers(argg)     # NB: scanner and encoder have to be created first. 
+	nlayers = length(scanner.layers)-1       # keep this constant 
 	submod(x) = model(x, scanner, encoder)   # maybe this is a workaround?  This broadcasts 
 	loss(x, y)=  Flux.mse(submod.(x),y)      # broadcasting the "sub-model" on the input x.
 	@info("Initial Loss: ", loss(test_data.data[1], test_data.data[2]) )
@@ -83,7 +188,10 @@ function RunIt()
 		Flux.train!(loss, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
 		push!(loss_v, testloss())
 	end 
-    # next step... predict, distribution of predictions, etc.  
+	# next step... predict, distribution of predictions, etc.  
+	predictions = hcat(["prediction";submod.(test_data.data[1])], ["label"; test_data.data[2]])
+	CSV.write("./output_$nlayers.csv", Tables.table(predictions))
+	CSV.write("./error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
 
 RunIt()
