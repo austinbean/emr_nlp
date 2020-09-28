@@ -98,12 +98,6 @@ end
 
 """
 `two_layers(args)`
-Takes as an argument the parameters in the "args" type.  
-Returns two things: a 'scanner' and an 'encoder'.  
-Dimension of the input needs to be # of unique words, 
-so Dense(args.inpt_dim) takes an 'args.inpt_dim' type 
-argument, where in LoadData() this is updated to the number of words.  
-This is passed back after updating w/in the LoadData() function.
 """
 function two_layers(args)
 	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N))
@@ -113,12 +107,6 @@ end
 
 """
 `three_layers(args)`
-Takes as an argument the parameters in the "args" type.  
-Returns two things: a 'scanner' and an 'encoder'.  
-Dimension of the input needs to be # of unique words, 
-so Dense(args.inpt_dim) takes an 'args.inpt_dim' type 
-argument, where in LoadData() this is updated to the number of words.  
-This is passed back after updating w/in the LoadData() function.
 """
 function three_layers(args)
 	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
@@ -128,12 +116,6 @@ end
 
 """
 `four_layers(args)`
-Takes as an argument the parameters in the "args" type.  
-Returns two things: a 'scanner' and an 'encoder'.  
-Dimension of the input needs to be # of unique words, 
-so Dense(args.inpt_dim) takes an 'args.inpt_dim' type 
-argument, where in LoadData() this is updated to the number of words.  
-This is passed back after updating w/in the LoadData() function.
 """
 function four_layers(args)
 	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
@@ -189,7 +171,7 @@ function RunIt()
 		push!(loss_v, testloss())
 	end 
 	# next step... predict, distribution of predictions, etc.  
-	predictions = hcat(["prediction";submod.(test_data.data[1])], ["label"; test_data.data[2]])
+	predictions = hcat(["prediction_$epoc_$nlayers";submod.(test_data.data[1])], ["label_$epoc_$nlayers"; test_data.data[2]])
 	CSV.write("./output_$nlayers.csv", Tables.table(predictions))
 	CSV.write("./error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
