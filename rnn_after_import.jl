@@ -23,8 +23,8 @@ using Tables
 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
-include("./punctuation_strip.jl")
-include("./s_split.jl")
+include("/home/beana1/emr_nlp/punctuation_strip.jl")
+include("/home/beana1/emr_nlp/s_split.jl")
 #include("./rnn_diet.jl")
 
 @with_kw mutable struct Args
@@ -47,7 +47,7 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	xfile = CSV.read("./data_labeled.csv", DataFrame);
+	xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
 
 	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
@@ -172,8 +172,8 @@ function RunIt()
 	end 
 	# next step... predict, distribution of predictions, etc.  
 	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
-	CSV.write("./output_$nlayers.csv", Tables.table(predictions))
-	CSV.write("./error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	CSV.write("/home/beana1/emr_nlp/output_$nlayers.csv", Tables.table(predictions))
+	CSV.write("/home/beana1/emr_nlp/error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
 
 RunIt()
