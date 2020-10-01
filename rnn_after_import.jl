@@ -171,7 +171,7 @@ function RunIt()
 		push!(loss_v, testloss())
 	end 
 	# next step... predict, distribution of predictions, etc.  
-	predictions = hcat(["prediction_$epoc_$nlayers";submod.(test_data.data[1])], ["label_$epoc_$nlayers"; test_data.data[2]])
+	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
 	CSV.write("./output_$nlayers.csv", Tables.table(predictions))
 	CSV.write("./error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
