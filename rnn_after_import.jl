@@ -23,6 +23,8 @@ using Tables
 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
+#include("./punctuation_strip.jl")
+#include("./s_split.jl")
 include("/home/beana1/emr_nlp/punctuation_strip.jl")
 include("/home/beana1/emr_nlp/s_split.jl")
 #include("./rnn_diet.jl")
@@ -48,6 +50,7 @@ w/ the number of unique words in the data updated.
 function LoadData()
 		# Load and clean 
 	xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
+	#xfile = CSV.read("./data_labeled.csv", DataFrame);
 
 	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
@@ -153,16 +156,20 @@ end
 function RunIt()
 	seed!(323) 
 	train_data, test_data,  argg = LoadData() # words, labels will be loaded
-	epoc = 100
+	epoc = 50
 	@info("Constructing Model...")
-	scanner, encoder = four_layers(argg)     # NB: scanner and encoder have to be created first. 
-	nlayers = length(scanner.layers)-1       # keep this constant 
-	submod(x) = model(x, scanner, encoder)   # maybe this is a workaround?  This broadcasts 
-	loss(x, y)=  Flux.mse(submod.(x),y)      # broadcasting the "sub-model" on the input x.
+	scanner, encoder = three_layers(argg)     # NB: scanner and encoder have to be created first. 
+	nlayers = length(scanner.layers)-1        # keep this constant 
+	ps = params(scanner, encoder)             # collect the parameters to regularize
+	sqnorm(x) = sum(abs2, x)
+	penalty() = sum(sqnorm, params(scanner)) + sum(sqnorm,params(encoder))
+	@info("Test Penalty: ", penalty())
+	submod(x) = model(x, scanner, encoder)             # maybe this is a workaround?  This broadcasts 
+	loss(x, y)=  Flux.mse(submod.(x),y) + penalty()    # broadcasting the "sub-model" on the input x.
 	@info("Initial Loss: ", loss(test_data.data[1], test_data.data[2]) )
 	testloss() = loss(test_data.data[1], test_data.data[2])	
 	opt = ADAM(argg.lr)
-	ps = params(scanner, encoder)
+	#ps = params(scanner, encoder)
 	evalcb = () -> @show testloss()
 	loss_v = Array{Float64,1}()
 	for i = 1:epoc
@@ -172,8 +179,8 @@ function RunIt()
 	end 
 	# next step... predict, distribution of predictions, etc.  
 	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
-	CSV.write("/home/beana1/emr_nlp/output_$nlayers.csv", Tables.table(predictions))
-	CSV.write("/home/beana1/emr_nlp/error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	CSV.write("/home/beana1/emr_nlp/reg_output_$nlayers.csv", Tables.table(predictions))
+	CSV.write("/home/beana1/emr_nlp/reg_error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
 
 RunIt()
