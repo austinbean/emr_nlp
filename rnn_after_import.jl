@@ -4,7 +4,8 @@
 Experiments to do:
 - regularization 
 - hidden layers.
-- node changes: 64 128 256 512 1024 2048  
+- node changes: 64 128 256 512 1024 2048 
+- TODO - this is not using the embeddings layer right now??? 
 =#
 
 
@@ -49,8 +50,8 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
-	#xfile = CSV.read("./data_labeled.csv", DataFrame);
+	#xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
+	xfile = CSV.read("./data_labeled.csv", DataFrame);
 
 	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
@@ -164,12 +165,11 @@ function RunIt()
 	sqnorm(x) = sum(abs2, x)
 	penalty() = sum(sqnorm, params(scanner)) + sum(sqnorm,params(encoder))
 	@info("Test Penalty: ", penalty())
-	submod(x) = model(x, scanner, encoder)             # maybe this is a workaround?  This broadcasts 
+	submod(x) = model(x, scanner, encoder)             # this is a workaround.  This broadcasts 
 	loss(x, y)=  Flux.mse(submod.(x),y) + penalty()    # broadcasting the "sub-model" on the input x.
 	@info("Initial Loss: ", loss(test_data.data[1], test_data.data[2]) )
 	testloss() = loss(test_data.data[1], test_data.data[2])	
 	opt = ADAM(argg.lr)
-	#ps = params(scanner, encoder)
 	evalcb = () -> @show testloss()
 	loss_v = Array{Float64,1}()
 	for i = 1:epoc
