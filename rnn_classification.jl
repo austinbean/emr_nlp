@@ -5,8 +5,11 @@
 which patients use formula, breast, both, no information.
 Simple task, but good proof of concept, perhaps.
 
+
+TODO - a version of this which uses embeddings
 =#
 
+module Run_Classification 
 
 using CSV 
 using DataFrames
@@ -111,11 +114,24 @@ function DoIt()
     testloss() = loss(test_data.data[1], test_data.data[2])
     testloss()
     opt = ADAM(argg.lr)
-    evalcb = ()-> @show testloss()
+	evalcb = ()-> @show testloss()
+	loss_v = Array{Float64,1}()
+
     for i = 1:epoc
         @info("At ", i)
-        Flux.train!(loss, ps, train_data,opt, cb = throttle(evalcb, argg.throttle))
-    end 
+		Flux.train!(loss, ps, train_data,opt, cb = throttle(evalcb, argg.throttle))
+		push!(loss_v, testloss())
+	end 
+	
+	# record the predictions 	
+	predictions = map(v -> v[2], findmax.(softmax.(submod.(test_data.data[1]))))
+	ix_labels = map( v-> convert(Int64, v.ix), test_data.data[2])
+	hcat( ["predicted_class"; predictions], ["actual_label"; ix_labels] )
+	# save the predictions and the training error:
+	filename = "rncl_"*string(nlayers)*"_ly_"*"_nds_"*string(epoc)*"_eps.csv"
+	CSV.write("/home/beana1/emr_nlp/cl_error_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	CSV.write("/home/beana1/emr_nlp/cl_preds_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
 DoIt()
 
+end # of module 
