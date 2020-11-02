@@ -177,15 +177,16 @@ function RunIt()
 		Flux.train!(loss, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
 		push!(loss_v, testloss())
 	end 
+	filename = "rnn_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e_.csv"
 	# next step... predict, distribution of predictions, etc.  
 	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
-	CSV.write("/home/beana1/emr_nlp/reg_output_$nlayers.csv", Tables.table(predictions))
-	CSV.write("/home/beana1/emr_nlp/reg_error_$nlayers.csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	CSV.write("/home/beana1/emr_nlp/reg_output_"*filename*".csv", Tables.table(predictions))
+	CSV.write("/home/beana1/emr_nlp/reg_error_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
 
 RunIt()
 
-end 
+end # of module Runner 
 
 
 #=
