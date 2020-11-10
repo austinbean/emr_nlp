@@ -20,16 +20,20 @@ using Random: shuffle, seed!
 using Parameters: @with_kw
 using Plots 
 using Tables 
+using Functors 
+using Embeddings
+using Embeddings: EmbeddingTable
 
 
- # /Users/austinbean/Desktop/programs/emr_nlp
-#include("./punctuation_strip.jl")
-#include("./s_split.jl")
-include("/home/beana1/emr_nlp/punctuation_strip.jl")
-include("/home/beana1/emr_nlp/s_split.jl")
-#include("./rnn_diet.jl")
+include("./punctuation_strip.jl")
+include("./s_split.jl")
+include("./rnn_embeddings.jl")
 
-# TODO - fix this part.  
+#include("/home/beana1/emr_nlp/punctuation_strip.jl")
+#include("/home/beana1/emr_nlp/s_split.jl")
+#include("/home/beana1/emr_nlp/rnn_embeddings.jl")
+
+
 
 @with_kw mutable struct Args
     lr::Float64 = 1e-3      # learning rate
@@ -38,7 +42,11 @@ include("/home/beana1/emr_nlp/s_split.jl")
 	throttle::Int = 1       # throttle timeout
     test_d::Int = 600       # length of the testing set.
     emb_table::Embeddings.EmbeddingTable = EmbeddingTable(zeros(2,2), zeros(3)) # has to be initialized w/ something later
-
+    embed_len::Int = 50    # Length of vector per each word embedding
+    test_len::Int = 100    # Number of unique words in test data 
+    # TODO - likely deletable.  Is this used anywhere important?  Duplicates inpt_dim 
+    word_list_len::Int = 0 # Total number of unique words
+    vocab::Array{String, 1} = []  #All the words in the training data
 end
 
 
@@ -63,12 +71,18 @@ function LoadData()
 	words = map( x->x*" <EOS>", words) ;   # add <EOS> to the end of every sentence.
 	labels = filter( x-> !ismissing(x), xfile[!, :total_quantity]);
 		# create an instance of the type
-	args = Args()
+    args = Args()
+        #Load the  word embeddings and assign back to args
+    eTable = load_embeddings(GloVe)
+    args.emb_table = eTable
+    
+
 		# collect all unique words to make 1-h vectors. 
 	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
 	nwords = size(allwords,1)                                                           # how many unique words are there?
 	args.inpt_dim = nwords                                                              # # of unique words is dimension of input to first layer.
-	interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
+    args.vocab = allwords 
+    interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
 	# all_data = [(x,y) for (x,y) in zip(interim,labels)] |> shuffle                      # pair data and labels, then randomize order
 		# separate test data and train data 
 	train_data = interim[1:end-args.test_d]
@@ -96,7 +110,7 @@ argument, where in LoadData() this is updated to the number of words.
 This is passed back after updating w/in the LoadData() function.
 """
 function one_layers(args)
-	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N))
+	scanner = Chain(Embed(args.vocab, args.embed_len, args.emb_table), LSTM(args.embed_len, args.N))
 	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
 	return scanner, encoder 
 end 
@@ -107,7 +121,7 @@ end
 `two_layers(args)`
 """
 function two_layers(args)
-	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N))
+	scanner = Chain(Embed(args.vocab, args.embed_len, args.emb_table), LSTM(args.embed_len, args.N), LSTM(args.N, args.N))
 	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
 	return scanner, encoder 
 end 
@@ -116,7 +130,7 @@ end
 `three_layers(args)`
 """
 function three_layers(args)
-	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
+	scanner = Chain(Embed(args.vocab, args.embed_len, args.emb_table), LSTM(args.embed_len, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
 	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
 	return scanner, encoder 
 end 
@@ -125,7 +139,7 @@ end
 `four_layers(args)`
 """
 function four_layers(args)
-	scanner = Chain(Dense(args.inpt_dim, args.N, σ), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
+	scanner = Chain(Embed(args.vocab, args.embed_len, args.emb_table), LSTM(args.embed_len, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N), LSTM(args.N, args.N))
 	encoder = Dense(args.N, 1, identity) # regression task - sum outputs and apply identity activation.
 	return scanner, encoder 
 end 
@@ -156,12 +170,11 @@ function model(x, scanner, encoder)
 end 
 
 
-	# TODO: regularization via penalty as, e.g., loss = mse(...) + sum(abs2, params), so e.g., scanner.W 
 function RunIt()
 	seed!(323) 
 	train_data, test_data,  argg = LoadData() # words, labels will be loaded
-	epoc = 50
-	@info("Constructing Model...")
+	epoc = 5
+    @info("Constructing Model...")
 	scanner, encoder = three_layers(argg)     # NB: scanner and encoder have to be created first. 
 	nlayers = length(scanner.layers)-1        # keep this constant 
 	ps = params(scanner, encoder)             # collect the parameters to regularize
@@ -180,7 +193,7 @@ function RunIt()
 		Flux.train!(loss, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
 		push!(loss_v, testloss())
 	end 
-	filename = "rnn_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e_.csv"
+	filename = "rnn_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e"
 	# next step... predict, distribution of predictions, etc.  
 	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
 	CSV.write("/home/beana1/emr_nlp/reg_output_"*filename*".csv", Tables.table(predictions))
