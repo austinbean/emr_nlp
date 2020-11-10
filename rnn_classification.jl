@@ -128,7 +128,7 @@ function DoIt()
 	ix_labels = map( v-> convert(Int64, v.ix), test_data.data[2])
 	hcat( ["predicted_class"; predictions], ["actual_label"; ix_labels] )
 	# save the predictions and the training error:
-	filename = "rncl_"*string(nlayers)*"_ly_"*"_nds_"*string(epoc)*"_eps.csv"
+	filename = "rncl_"*string(nlayers)*"_ly_"*"_nds_"*string(epoc)*"_eps"
 	CSV.write("/home/beana1/emr_nlp/cl_error_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 	CSV.write("/home/beana1/emr_nlp/cl_preds_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
