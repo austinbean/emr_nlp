@@ -23,11 +23,12 @@ using Plots
 using Tables 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
-include("./punctuation_strip.jl")
-include("./s_split.jl")
-#include("/home/beana1/emr_nlp/punctuation_strip.jl")
-#include("/home/beana1/emr_nlp/s_split.jl")
+#include("./punctuation_strip.jl")
+#include("./s_split.jl")
 #include("./rnn_diet.jl")
+
+include("/home/beana1/emr_nlp/punctuation_strip.jl")
+include("/home/beana1/emr_nlp/s_split.jl")
 
 
 
@@ -51,8 +52,8 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	#xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
-	xfile = CSV.read("./data_labeled.csv", DataFrame);
+	xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
+	#xfile = CSV.read("./data_labeled.csv", DataFrame);
 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
 	words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
