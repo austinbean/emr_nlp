@@ -26,14 +26,14 @@ using Functors
 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
-include("./punctuation_strip.jl")
-include("./s_split.jl")
-include("./rnn_embeddings.jl")
-
-#include("/home/beana1/emr_nlp/punctuation_strip.jl")
-#include("/home/beana1/emr_nlp/s_split.jl")
-#include("/home/beana1/emr_nlp/rnn_embeddings.jl")
+#include("./punctuation_strip.jl")
+#include("./s_split.jl")
+#include("./rnn_embeddings.jl")
 #include("./rnn_diet.jl")
+
+include("/home/beana1/emr_nlp/punctuation_strip.jl")
+include("/home/beana1/emr_nlp/s_split.jl")
+include("/home/beana1/emr_nlp/rnn_embeddings.jl")
 
 
 
@@ -63,8 +63,8 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	#xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
-	xfile = CSV.read("./data_labeled.csv", DataFrame);
+	xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
+	#xfile = CSV.read("./data_labeled.csv", DataFrame);
 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
 	words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
@@ -124,7 +124,7 @@ end
 function DoIt()
     seed!(323) 
 	train_data, test_data,  argg = LoadData() # words, labels will be loaded
-    epoc = 5
+    epoc = 50
     scanner, encoder = two_layers(argg)       # NB: scanner and encoder have to be created first. 
 	nlayers = length(scanner.layers)-1        # keep this constant 
     ps = params(scanner, encoder)   
