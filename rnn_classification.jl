@@ -6,7 +6,8 @@ which patients use formula, breast, both, no information.
 Simple task, but good proof of concept, perhaps.
 
 
-TODO - a version of this which uses embeddings
+TODO - create the labels on the server!
+copy labels to convenient place
 =#
 
 module Run_Classification 
@@ -52,7 +53,7 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
+	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
 	#xfile = CSV.read("./data_labeled.csv", DataFrame);
 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));

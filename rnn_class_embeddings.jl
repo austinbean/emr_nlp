@@ -63,7 +63,7 @@ w/ the number of unique words in the data updated.
 """
 function LoadData()
 		# Load and clean 
-	xfile = CSV.read("/home/beana1/emr_nlp/data_labeled.csv", DataFrame);
+	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
 	#xfile = CSV.read("./data_labeled.csv", DataFrame);
 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));

@@ -1,6 +1,7 @@
 # use rnn_diet.jl to define a function to import the data, then put an include statement at the top of this one.
 
 #=
+Reminder that this only does formula so far.  
 Experiments to do:
 - regularization 
 - hidden layers.
