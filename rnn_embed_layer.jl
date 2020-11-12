@@ -195,7 +195,7 @@ function RunIt()
 		push!(loss_v, testloss())
 		@info("Testloss ", testloss())
 	end 
-	filename = "rnn_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e"
+	filename = "rnn_emb_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e"
 	# next step... predict, distribution of predictions, etc.  
 	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
 	CSV.write("/home/beana1/emr_nlp/reg_output_"*filename*".csv", Tables.table(predictions))
