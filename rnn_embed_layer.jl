@@ -174,7 +174,7 @@ end
 function RunIt()
 	seed!(323) 
 	train_data, test_data,  argg = LoadData() # words, labels will be loaded
-	epoc = 50
+	epoc = 100
     @info("Constructing Model...")
 	scanner, encoder = three_layers(argg)     # NB: scanner and encoder have to be created first. 
 	nlayers = length(scanner.layers)-1        # keep this constant 
