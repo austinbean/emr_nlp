@@ -193,6 +193,7 @@ function RunIt()
 		@info("At ", i)
 		Flux.train!(loss, ps, train_data, opt, cb = throttle(evalcb, argg.throttle))
 		push!(loss_v, testloss())
+		@info("Testloss ", testloss())
 	end 
 	filename = "rnn_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e"
 	# next step... predict, distribution of predictions, etc.  
