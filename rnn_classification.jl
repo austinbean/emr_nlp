@@ -4,10 +4,6 @@
 
 which patients use formula, breast, both, no information.
 Simple task, but good proof of concept, perhaps.
-
-
-TODO - create the labels on the server!
-copy labels to convenient place
 =#
 
 module Run_Classification 
@@ -54,13 +50,13 @@ w/ the number of unique words in the data updated.
 function LoadData()
 		# Load and clean 
 	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
-	#xfile = CSV.read("./data_labeled.csv", DataFrame);
+	#xfile = CSV.read("./class_label.csv", DataFrame);
 
 	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
 	words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
 	mwords = maximum(length.(split.(words)))
 	words = map( x->x*" <EOS>", words) ;                                                # add <EOS> to the end of every sentence.
-	labels = filter( x-> !ismissing(x), xfile[!, 3]);                                   # 3rd col labels.
+	labels = filter( x-> !ismissing(x), xfile[!, 2]);                                   # 3rd col labels.
 		# create an instance of the type
 	args = Args()
 		# collect all unique words to make 1-h vectors. 
@@ -123,6 +119,7 @@ function DoIt()
         @info("At ", i)
 		Flux.train!(loss, ps, train_data,opt, cb = throttle(evalcb, argg.throttle))
 		push!(loss_v, testloss())
+		@info("Testloss ", testloss())
 	end 
 	
 	# record the predictions 	
