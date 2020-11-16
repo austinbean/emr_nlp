@@ -21,6 +21,7 @@ using Random: shuffle, seed!
 using Parameters: @with_kw
 using Plots 
 using Tables 
+using Dates
 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
@@ -154,7 +155,6 @@ function model(x, scanner, encoder)
 end 
 
 
-	# TODO: regularization via penalty as, e.g., loss = mse(...) + sum(abs2, params), so e.g., scanner.W 
 function RunIt()
 	seed!(323) 
 	train_data, test_data,  argg = LoadData() # words, labels will be loaded
@@ -179,11 +179,12 @@ function RunIt()
 		push!(loss_v, testloss())
 		@info("Testloss ", testloss())
 	end 
-	filename = "rnn_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e"
+	t2 = Dates.format(now(),"yyyy_mm_dd")
+	filename = "rnn_"*string(nlayers)*"_l_"*string(argg.N)*"_n_"*string(epoc)*"_e"*t2 
 	# next step... predict, distribution of predictions, etc.  
 	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
-	CSV.write("/home/beana1/emr_nlp/reg_output_"*filename*".csv", Tables.table(predictions))
-	CSV.write("/home/beana1/emr_nlp/reg_error_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	CSV.write("/home/beana1/emr_nlp/results/RO_"*filename*".csv", Tables.table(predictions))
+	CSV.write("/home/beana1/emr_nlp/results/RE_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
 
 RunIt()

@@ -23,7 +23,7 @@ using Tables
 using Embeddings
 using Embeddings: EmbeddingTable
 using Functors
-
+using Dates 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
 #include("./punctuation_strip.jl")
@@ -144,15 +144,15 @@ function DoIt()
 		push!(loss_v, testloss())
 		@info("Testloss ", testloss())
 	end 
-	
+	t2 = Dates.format(now(),"yyyy_mm_dd")
+
 	# record the predictions 	
 	predictions = map(v -> v[2], findmax.(softmax.(submod.(test_data.data[1]))))
 	ix_labels = map( v-> convert(Int64, v.ix), test_data.data[2])
-	hcat( ["predicted_class"; predictions], ["actual_label"; ix_labels] )
 	# save the predictions and the training error:
-	filename = "rnEMcl_"*string(nlayers)*"_ly_"*"_nds_"*string(epoc)*"_eps"
-	CSV.write("/home/beana1/emr_nlp/cl_error_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
-	CSV.write("/home/beana1/emr_nlp/cl_preds_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	filename = "RNEMCL_"*string(nlayers)*"_l_"*string(argg.N)*"_n_"*string(epoc)*"_e"*t2
+	CSV.write("/home/beana1/emr_nlp/results/CE_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	CSV.write("/home/beana1/emr_nlp/results/CO_"*filename*".csv", Tables.table(hcat( ["predicted_class"; predictions], ["actual_label"; ix_labels] )) )
 end 
 DoIt()
 

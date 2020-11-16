@@ -6,6 +6,7 @@ Experiments to do:
 - regularization 
 - hidden layers.
 - node changes: 64 128 256 512 1024 2048 
+- switch to relu, it seems.  
 =#
 
 
@@ -24,6 +25,7 @@ using Tables
 using Functors 
 using Embeddings
 using Embeddings: EmbeddingTable
+using Dates
 
 
 #include("./punctuation_strip.jl")
@@ -195,11 +197,12 @@ function RunIt()
 		push!(loss_v, testloss())
 		@info("Testloss ", testloss())
 	end 
-	filename = "rnn_emb_"*string(nlayers)*"_l_"*"_n_"*string(epoc)*"_e"
+	t2 = Dates.format(now(),"yyyy_mm_dd")
+	filename = "rnn_emb_"*string(nlayers)*"_l_"*string(argg.N)*"_n_"*string(epoc)*"_e"*t2
 	# next step... predict, distribution of predictions, etc.  
 	predictions = hcat(["prediction_$nlayers";submod.(test_data.data[1])], ["label_$nlayers"; test_data.data[2]])
-	CSV.write("/home/beana1/emr_nlp/reg_output_"*filename*".csv", Tables.table(predictions))
-	CSV.write("/home/beana1/emr_nlp/reg_error_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
+	CSV.write("/home/beana1/emr_nlp/results/EM_RO_"*filename*".csv", Tables.table(predictions))
+	CSV.write("/home/beana1/emr_nlp/results/EM_RE_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 end 
 
 RunIt()
