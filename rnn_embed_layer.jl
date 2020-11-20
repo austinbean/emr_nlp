@@ -41,7 +41,7 @@ include("/home/beana1/emr_nlp/rnn_embeddings.jl")
 @with_kw mutable struct Args
     lr::Float64 = 1e-1      # learning rate
 	inpt_dim::Int  = 813    # number of words.  size(allwords,1)
-	N::Int = 256            # Number of perceptrons in hidden layer - free parameter
+	N::Int = 512            # Number of perceptrons in hidden layer - free parameter
 	throttle::Int = 1       # throttle timeout
     test_d::Int = 600       # length of the testing set.
     emb_table::Embeddings.EmbeddingTable = EmbeddingTable(zeros(2,2), zeros(3)) # has to be initialized w/ something later
