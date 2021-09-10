@@ -26,14 +26,14 @@ using Functors
 using Dates 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
-#include("./punctuation_strip.jl")
-#include("./s_split.jl")
-#include("./rnn_embeddings.jl")
-#include("./rnn_diet.jl")
+include("./punctuation_strip.jl")
+include("./s_split.jl")
+include("./rnn_embeddings.jl")
+include("./labeler.jl")
 
-include("/home/beana1/emr_nlp/punctuation_strip.jl")
-include("/home/beana1/emr_nlp/s_split.jl")
-include("/home/beana1/emr_nlp/rnn_embeddings.jl")
+#include("/home/beana1/emr_nlp/punctuation_strip.jl")
+#include("/home/beana1/emr_nlp/s_split.jl")
+#include("/home/beana1/emr_nlp/rnn_embeddings.jl")
 
 
 
@@ -60,46 +60,51 @@ end
 This creates test and training data and returns them.  Also returns an instance of 'args' type
 w/ the number of unique words in the data updated.
 
+# test of filter statement below.  
+df = DataFrame(diet_text=["hi", missing, "bye"], total_formula=[missing, 1, 2])
+# should be ["bye", 2] and it is.  
 """
 function LoadData()
-		# Load and clean 
-	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
-	#xfile = CSV.read("./class_label.csv", DataFrame);
-
-	words = convert(Array{String,1}, filter( x->(!ismissing(x))&(isa(x, String)), xfile[!, :diet]));
+	seed!(0) # for shuffle
+		# Load 
+	xfile = CSV.read("/Users/austinbean/Desktop/diet_local/formula_subset.csv", DataFrame);	 
+	#	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
+		# Shuffle DataFrame rows, making a copy  
+	xfile = xfile[shuffle(1:size(xfile, 1)),:]
+		# this filter must check whether :diet_text is not missing AND whether :total_formula is not missing.  
+	xfile = filter(x-> (!ismissing(x[:diet_text])&(!ismissing(x[:total_formula])&(isa(x[:diet_text], String)))), xfile)
+		# then subset out words separately.  
+	words = convert(Array{String,1}, xfile[!, :diet_text]);
 	words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
 	mwords = maximum(length.(split.(words)))
 	words = map( x->x*" <EOS>", words) ;                                                # add <EOS> to the end of every sentence.
-	labels = filter( x-> !ismissing(x), xfile[!, 2]);                                   # 3rd col labels.
 		# create an instance of the type
 	args = Args()
 
-    #Load the  word embeddings and assign back to args
+    	#Load the  word embeddings and assign back to args
     eTable = load_embeddings(GloVe)
     args.emb_table = eTable
-    
-    
-    # collect all unique words to make 1-h vectors. 
+    	# get the labels
+	labels = labeler(xfile[!,:total_formula])[:,2] 
+   		# collect all unique words to make 1-h vectors. 
 	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
 	nwords = size(allwords,1)                                                           # how many unique words are there?
 	args.inpt_dim = nwords                                                              # # of unique words is dimension of input to first layer.
     args.vocab = allwords 
     interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
-    #one-hot batch the labels 
+    	#one-hot batch the labels 
     all_labels = [unique(labels); -1]                                                   # how many classes?
     args.classes = size(all_labels,1)     
     interim_labels = map( v-> Flux.onehot(v, all_labels, -1), labels)		
-
-    # separate test data and train data 
-	train_data = interim[1:end-args.test_d]
-	test_data = interim[end-args.test_d+1:end]
-
-	train_labels = interim_labels[1:end-args.test_d]
-	test_labels = interim_labels[end-args.test_d+1:end]
-		# Return args b/c nwords may have been updated.
-		# change to train via epochs.
-	#Flux.Data.DataLoader(ctrain, ltrain; batchsize=100, shuffle = true), Flux.Data.DataLoader(ctest, ltest), args
-	return Flux.Data.DataLoader(train_data, train_labels; batchsize=100, shuffle = true), Flux.Data.DataLoader((test_data, test_labels)), args
+		# subset test/train	
+	test_ix = convert(Int64,floor(0.7*size(xfile,1)))
+	train_data = interim[1:test_ix,:]
+	train_data = reshape(train_data, 1, size(train_data,1)) # NB: dataloader makes last dimension the observation dim.
+	test_data = interim[(test_ix+1):end, :]
+	test_data = reshape(test_data, 1, size(test_data,1)) # NB: dataloader makes last dimension the observation dim.
+	train_labels = reshape(interim_labels[1:test_ix],1, size(interim_labels[1:test_ix],1))
+	test_labels = reshape(interim_labels[(test_ix+1):end],1, size(interim_labels[(test_ix+1):end],1))
+	return Flux.DataLoader((data=train_data, label=train_labels), batchsize=100, shuffle=true), Flux.DataLoader((data=test_data,label=test_labels)), args
 end 
 
 
@@ -115,7 +120,8 @@ function two_layers(args)
 end 
 
 function model(x, scanner, encoder)
-	state = scanner.(x.data)[end]     # the last column, so the last hidden state and feature.  
+	# TODO - this can't broadcast in the same way anymore?  
+	state = scanner.(x)[end]     # the last column, so the last hidden state and feature.  
 	reset!(scanner)                   # must be called before each new record
 	encoder(state)                    # this returns a vector of a single element...  annoying.  
 end 
@@ -124,7 +130,8 @@ end
 function DoIt()
     seed!(323) 
 	train_data, test_data,  argg = LoadData() # words, labels will be loaded
-    epoc = 100
+    epoc = 10
+	# TODO - rewrite scanner and encoder b/c something has changed.  
     scanner, encoder = two_layers(argg)       # NB: scanner and encoder have to be created first. 
 	nlayers = length(scanner.layers)-1        # keep this constant 
     ps = params(scanner, encoder)   
@@ -132,7 +139,7 @@ function DoIt()
     # yes, wrong dims on the embed layer. :( 
     submod(x) = model(x, scanner, encoder)
     loss(x,y) = sum(Flux.logitcrossentropy.(submod.(x), y))
-    testloss() = loss(test_data.data[1], test_data.data[2])
+    testloss() = loss(test_data.data.data, test_data.data.label)
     testloss()
     opt = ADAM(argg.lr)
 	evalcb = ()-> @show testloss()
