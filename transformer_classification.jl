@@ -61,6 +61,7 @@ This so far has just loaded the embeddings, effectively.
 """
 function LoadData()
 		# Load and clean 
+	xfile = CSV.read("/Users/austinbean/Desktop/diet_local/formula_subset.csv", DataFrame);
 	#xfile = CSV.read("./data_labeled.csv", DataFrame);
 
 	# TODO - there is nothing called column 1, column 2.  col1 -> diet, col2 -> total_quantity 
