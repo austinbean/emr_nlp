@@ -5,6 +5,7 @@
 which patients use formula, breast, both, no information.
 Simple task, but good proof of concept, perhaps.
 
+TODO - check whether the embed layer now screws up the one-hot encoding.  
 
 =#
 
@@ -66,7 +67,7 @@ df = DataFrame(diet_text=["hi", missing, "bye"], total_formula=[missing, 1, 2])
 """
 function LoadData()
 	seed!(0) # for shuffle
-		# Load 
+		# Load the text
 	xfile = CSV.read("/Users/austinbean/Desktop/diet_local/formula_subset.csv", DataFrame);	 
 	#	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
 		# Shuffle DataFrame rows, making a copy  
@@ -76,6 +77,7 @@ function LoadData()
 		# then subset out words separately.  
 	words = convert(Array{String,1}, xfile[!, :diet_text]);
 	words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
+		# this is the longest single sentence.
 	mwords = maximum(length.(split.(words)))
 	words = map( x->x*" <EOS>", words) ;                                                # add <EOS> to the end of every sentence.
 		# create an instance of the type
@@ -119,9 +121,16 @@ function two_layers(args)
 	return scanner, encoder 
 end 
 
+"""
+`model`
+Dimension of single observation is:
+(total # words in data) × (sentence length)
+1.  Does the embedding layer work right?
+Try this on a sentence of one word... 
+Maybe [:,end] is taking the embedding of <EOS> which is [0,...,0]
+"""
 function model(x, scanner, encoder)
-	# TODO - this can't broadcast in the same way anymore?  
-	state = scanner.(x)[end]     # the last column, so the last hidden state and feature.  
+	state = scanner(x)[:,end]     # the last column, so the last hidden state and feature.  
 	reset!(scanner)                   # must be called before each new record
 	encoder(state)                    # this returns a vector of a single element...  annoying.  
 end 
@@ -135,8 +144,6 @@ function DoIt()
     scanner, encoder = two_layers(argg)       # NB: scanner and encoder have to be created first. 
 	nlayers = length(scanner.layers)-1        # keep this constant 
     ps = params(scanner, encoder)   
-# TODO - this doesn't broadcast to the right dims?  It is for sure a problem w/ the embed layer.  
-    # yes, wrong dims on the embed layer. :( 
     submod(x) = model(x, scanner, encoder)
     loss(x,y) = sum(Flux.logitcrossentropy.(submod.(x), y))
     testloss() = loss(test_data.data.data, test_data.data.label)
