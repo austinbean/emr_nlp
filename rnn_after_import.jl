@@ -25,12 +25,12 @@ using Dates
 
 
  # /Users/austinbean/Desktop/programs/emr_nlp
-#include("./punctuation_strip.jl")
-#include("./s_split.jl")
-#include("./rnn_diet.jl")
+include("./punctuation_strip.jl")
+include("./s_split.jl")
+include("./rnn_diet.jl")
 
-include("/home/beana1/emr_nlp/punctuation_strip.jl")
-include("/home/beana1/emr_nlp/s_split.jl")
+#include("/home/beana1/emr_nlp/punctuation_strip.jl")
+#include("/home/beana1/emr_nlp/s_split.jl")
 
 @with_kw mutable struct Args
     lr::Float64 = 1e-1      # learning rate
