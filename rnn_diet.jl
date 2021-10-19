@@ -6,7 +6,9 @@
 
 # load the file punctuation_strip.jl and run that function first to remove punctuation and standardize
     # loads the function string_cleaner
-@with_kw mutable struct Args
+
+
+	@with_kw mutable struct Args
     lr::Float64 = 1e-3      # learning rate
 	inpt_dim::Int  = 813    # number of words.  size(allwords,1)
 	N::Int = 256            # Number of perceptrons in hidden layer - free parameter
