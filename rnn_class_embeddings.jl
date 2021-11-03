@@ -5,7 +5,8 @@
 which patients use formula, breast, both, no information.
 Simple task, but good proof of concept, perhaps.
 
-TODO - check whether the embed layer now screws up the one-hot encoding.  
+TODO - LSTM may not work if some of the inputs are Float64 
+Probably the embeddings are in Float64 form.   
 
 =#
 
@@ -53,6 +54,20 @@ include("./labeler.jl")
     vocab::Array{String, 1} = []  #All the words in the training data
 end
 
+"""
+`PadSentence(str, dmax)`
+Adds the pattern " <blank>" to sentences which are less than `dmax`
+long up to the length `dmax`.
+"""
+function PadSentence(str, dmax)
+    l = length(split(str))
+    pad = dmax - l 
+    if (pad > 0)
+        return str*repeat(" <blank>", pad)
+    else 
+        return str 
+    end 
+end 
 
 
 """
@@ -75,12 +90,16 @@ function LoadData()
 		# this filter must check whether :diet_text is not missing AND whether :total_formula is not missing.  
 	xfile = filter(x-> (!ismissing(x[:diet_text])&(!ismissing(x[:total_formula])&(isa(x[:diet_text], String)))), xfile)
 		# then subset out words separately.  
+	num_sentences = size(xfile,1)
 	words = convert(Array{String,1}, xfile[!, :diet_text]);
 	words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
 		# this is the longest single sentence.
 	mwords = maximum(length.(split.(words)))
+	words = PadSentence.(words, mwords)
 	words = map( x->x*" <EOS>", words) ;                                                # add <EOS> to the end of every sentence.
-		# create an instance of the type
+	# pad the sentences to max length 
+	
+	# create an instance of the type
 	args = Args()
 
     	#Load the  word embeddings and assign back to args
@@ -93,30 +112,59 @@ function LoadData()
 	nwords = size(allwords,1)                                                           # how many unique words are there?
 	args.inpt_dim = nwords                                                              # # of unique words is dimension of input to first layer.
     args.vocab = allwords 
-    interim = map( v -> Flux.onehotbatch(v, allwords, "<UNK>"), s_split.(words)) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
-    	#one-hot batch the labels 
+    e1 = Embed(allwords, args.embed_len, eTable)
+		# subset test/train	
+	test_ix = convert(Int64,floor(0.7*size(xfile,1)))
+	training_data = MakeData(args.embed_len, args.vocab, e1, words[1:test_ix])
+	test_data = MakeData(args.embed_len, args.vocab, e1, words[(test_ix+1):end])
+
+		# one-hot batch the labels, then subset test/train 
     all_labels = [unique(labels); -1]                                                   # how many classes?
     args.classes = size(all_labels,1)     
     interim_labels = map( v-> Flux.onehot(v, all_labels, -1), labels)		
-		# subset test/train	
-	test_ix = convert(Int64,floor(0.7*size(xfile,1)))
-	train_data = interim[1:test_ix,:]
-	train_data = reshape(train_data, 1, size(train_data,1)) # NB: dataloader makes last dimension the observation dim.
-	test_data = interim[(test_ix+1):end, :]
-	test_data = reshape(test_data, 1, size(test_data,1)) # NB: dataloader makes last dimension the observation dim.
 	train_labels = reshape(interim_labels[1:test_ix],1, size(interim_labels[1:test_ix],1))
 	test_labels = reshape(interim_labels[(test_ix+1):end],1, size(interim_labels[(test_ix+1):end],1))
-	return Flux.DataLoader((data=train_data, label=train_labels), batchsize=100, shuffle=true), Flux.DataLoader((data=test_data,label=test_labels)), args
+	return (training_data, train_labels), (test_data, test_labels), args
 end 
 
+"""
+`MakeData`
+Takes an embedding length, the set of all words, an embedding layer, the number 
+of sentences, and a list of sentences and returns a Vector of Matrices, where 
+the dimensions are: [ Embed_len × Number of sentences]_(N words in sentence)
+
+ 
+(seq length == sentence length) × (features == length of embedding) × (number of sentences)
+but as a vector, so [(features)×(number of sentences)]_(N_*words* in sentence × 1)
+first reshape to (embed_dim × sentences)
+probably all sentences must be padded.  
+also this needs to be a vector.  For this example [50 x 533]_(85x1)
+
+
+This is incredibly cumbersome to divide into train/test, isn't it??? 
+Maybe these things don't need to be the same in the num_sentences dimension 
+because we keep calling reset!(model())
+"""
+function MakeData(embed_len, all_words, embed_layer, sentences)
+	num_sentences = length(sentences)
+    interim = embed_layer.(map( v -> Flux.onehotbatch(v, all_words, "<UNK>"), s_split.(sentences))) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
+	to_reshape = vcat(interim...)
+	tens = reshape(to_reshape, (embed_len,num_sentences,:))
+	data = Vector{Matrix{Float32}}()
+	for i = 1:size(tens,3)
+		push!(data, tens[:,:,i])
+	end 
+	return data 
+end 
 
 
 
 """
 `two_layers(args)`
+Removed the Embed layer to help with data prep.  
 """
 function two_layers(args)
-    scanner = Chain(Embed(args.vocab, args.embed_len, args.emb_table), LSTM(args.embed_len, args.N), LSTM(args.N, args.N))
+    scanner = Chain(LSTM(args.embed_len, args.N), LSTM(args.N, args.N))
     encoder = Dense(args.N, args.classes, identity)
 	return scanner, encoder 
 end 
@@ -128,35 +176,77 @@ Dimension of single observation is:
 1.  Does the embedding layer work right?
 Try this on a sentence of one word... 
 Maybe [:,end] is taking the embedding of <EOS> which is [0,...,0]
+
+This works:
+model(train_data.data[1][1], scanner, encoder)
+TODO: This probably can't be working exactly as expected
 """
 function model(x, scanner, encoder)
 	state = scanner(x)[:,end]     # the last column, so the last hidden state and feature.  
 	reset!(scanner)                   # must be called before each new record
-	encoder(state)                    # this returns a vector of a single element...  annoying.  
+	encoder(state)                      
 end 
 
 
+
+"""
+some combination of 
+submod 
+loss 
+train 
+need to be changed to work on a dataloader tuple.  
+
+Docs for train! have basically loss(d...) for d in train_data 
+
+
+Can I do submod(d...) ? 
+	# ok, this works, but now what?  
+for d in train_data
+	println(loss(d...)) # This only works if loss is defined as loss(x,y), NOT loss((x,y))
+	# train!(loss, ps, train_data, opt)
+end 
+
+
+frustrating problem.  Cannot seem to get model/submod/etc to work on a tuple 
+from dataloader.  
+so so so so annoying... 
+
+    #testloss() = loss(test_data.data.data, test_data.data.label)
+    #testloss()
+"""
 function DoIt()
     seed!(323) 
-	train_data, test_data,  argg = LoadData() # words, labels will be loaded
+	(train_data, train_label), (test_data,test_label),  argg = LoadData() # words, labels will be loaded
+	opt = ADAM(argg.lr)
     epoc = 10
-	# TODO - rewrite scanner and encoder b/c something has changed.  
-    scanner, encoder = two_layers(argg)       # NB: scanner and encoder have to be created first. 
-	nlayers = length(scanner.layers)-1        # keep this constant 
-    ps = params(scanner, encoder)   
-    submod(x) = model(x, scanner, encoder)
-    loss(x,y) = sum(Flux.logitcrossentropy.(submod.(x), y))
-    testloss() = loss(test_data.data.data, test_data.data.label)
-    testloss()
-    opt = ADAM(argg.lr)
-	evalcb = ()-> @show testloss()
-	loss_v = Array{Float64,1}()
 
-    for i = 1:epoc
-        @info("At ", i)
-		Flux.train!(loss, ps, train_data,opt, cb = throttle(evalcb, argg.throttle))
-		push!(loss_v, testloss())
-		@info("Testloss ", testloss())
+    scanner, encoder = two_layers(argg)       # NB: scanner and encoder have to be created first. 
+    ps = params(scanner, encoder)   
+    loss(x,y) = Flux.logitcrossentropy(model(x, scanner, encoder), y)
+	@info "test the loss" loss(train_data[1], train_label[1])
+    testloss() = mean(Flux.logitcrossentropy.([model(x, scanner, encoder) for x in test_data], test_label))
+    testloss()
+	@info "trying again... "
+		# Ok - the problem is the dimension of the batch   
+		# this now runs.  There is only one batch, but that's fixable.  
+	for (x,y) in zip(train_data, train_label)  
+		#loss(x,y)
+		gs = Flux.gradient(ps) do 
+			loss(x,y)
+		end 
+		Flux.update!(opt, ps, gs)
+	end 
+
+
+
+		[model(z, scanner, encoder) for z in x] # this line works
+		loss.(x,y)   # this line works 
+
+# still not working... 
+
+    loss(x,y) = Flux.logitcrossentropy(model(x, scanner, encoder), y)
+    for i = 1:10
+		Flux.train!(x->loss(x...), ps, train_data, opt) # , cb = throttle(evalcb, argg.throttle)
 	end 
 	t2 = Dates.format(now(),"yyyy_mm_dd")
 
