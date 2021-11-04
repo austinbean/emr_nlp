@@ -40,9 +40,9 @@ include("./labeler.jl")
 
 
 @with_kw mutable struct Args
-    lr::Float64 = 1e-1      # learning rate
+    lr::Float64 = 1e-3      # learning rate
 	inpt_dim::Int  = 813    # number of words.  size(allwords,1)
-	N::Int = 1024            # Number of perceptrons in hidden layer - free parameter
+	N::Int = 48            # Number of perceptrons in hidden layer - free parameter
 	throttle::Int = 1       # throttle timeout
     test_d::Int = 600       # length of the testing set.
     classes::Int = 3        # how many classes are there?
@@ -123,7 +123,9 @@ function LoadData()
     args.classes = size(all_labels,1)     
     interim_labels = map( v-> Flux.onehot(v, all_labels, -1), labels)		
 	train_labels = reshape(interim_labels[1:test_ix],1, size(interim_labels[1:test_ix],1))
+	train_labels = hcat(train_labels...)
 	test_labels = reshape(interim_labels[(test_ix+1):end],1, size(interim_labels[(test_ix+1):end],1))
+	test_labels = hcat(test_labels...)
 	return (training_data, train_labels), (test_data, test_labels), args
 end 
 
@@ -140,10 +142,6 @@ first reshape to (embed_dim × sentences)
 probably all sentences must be padded.  
 also this needs to be a vector.  For this example [50 x 533]_(85x1)
 
-
-This is incredibly cumbersome to divide into train/test, isn't it??? 
-Maybe these things don't need to be the same in the num_sentences dimension 
-because we keep calling reset!(model())
 """
 function MakeData(embed_len, all_words, embed_layer, sentences)
 	num_sentences = length(sentences)
@@ -155,6 +153,33 @@ function MakeData(embed_len, all_words, embed_layer, sentences)
 		push!(data, tens[:,:,i])
 	end 
 	return data 
+end 
+
+"""
+DataBatch(train_data, train_label, 30)
+"""
+function DataBatch(d, labels, batch_size)
+	num_sentences = size(d[1],2)
+	remainder = num_sentences%batch_size 
+	batches = num_sentences ÷ batch_size 
+	if remainder > 0 
+		batches += 1
+	end 
+	batched = Vector() # type Any...
+	for i = 1:batches 
+		ix_start = ((i-1)*batch_size+1)
+		ix_end = min((i*batch_size), num_sentences) # in case there is a remainder
+		tm_dat = Vector{typeof(d[1])}()
+		tm_lab = Vector{typeof(labels[:,1])}()
+		for k = 1:size(d,1) # 
+			push!(tm_dat, d[k][:,ix_start:ix_end])
+		end 
+		for j = ix_start:ix_end 
+			push!(tm_lab, labels[:,j])
+		end 
+		push!(batched, (tm_dat,hcat(tm_lab...)))
+	end 
+	return batched 
 end 
 
 
@@ -175,60 +200,42 @@ Dimension of single observation is:
 (total # words in data) × (sentence length)
 1.  Does the embedding layer work right?
 Try this on a sentence of one word... 
-Maybe [:,end] is taking the embedding of <EOS> which is [0,...,0]
 
-This works:
-model(train_data.data[1][1], scanner, encoder)
-TODO: This probably can't be working exactly as expected
+
+make a test datum:
+test_datum = Vector{Matrix{Float32}}()
+for i = 1:80
+	push!(test_datum, rand(Float32, 50,1))
+end 
+
+test_d2 = collect( eachslice( rand(Float32,50,1,80), dims=3))
+model(test_d2, scanner, encoder)
+
+[model([train_data[x][:,j] for x in 1:size(train_data,1)], scanner, encoder) for j = 1:size(train_data[1],2) ]
+
 """
 function model(x, scanner, encoder)
-	state = scanner(x)[:,end]     # the last column, so the last hidden state and feature.  
 	reset!(scanner)                   # must be called before each new record
-	encoder(state)                      
+	state = scanner(x[1]) 
+	for i=2:length(x)                 # this is explicit about the order
+		state = scanner(x[i])
+	end 
+	encoder(state)
 end 
 
-
+"""
+debug sizes with this line: 
+  Flux.Zygote.ignore() do  # Debugging purposes only. If this fails, check the shapes!
+    @assert ndims(logits) == 2 && size(logits) == size(labels)
+  end
+"""
+function overall_loss(data, labels, scanner, encoder)
+  logits = model(data, scanner, encoder)
+  Flux.logitcrossentropy(logits, labels)
+end
 
 """
-some combination of 
-submod 
-loss 
-train 
-need to be changed to work on a dataloader tuple.  
 
-Docs for train! have basically loss(d...) for d in train_data 
-
-
-Can I do submod(d...) ? 
-	# ok, this works, but now what?  
-for d in train_data
-	println(loss(d...)) # This only works if loss is defined as loss(x,y), NOT loss((x,y))
-	# train!(loss, ps, train_data, opt)
-end 
-
-
-frustrating problem.  Cannot seem to get model/submod/etc to work on a tuple 
-from dataloader.  
-so so so so annoying... 
-
-    #testloss() = loss(test_data.data.data, test_data.data.label)
-    #testloss()
-"""
-function DoIt()
-    seed!(323) 
-	(train_data, train_label), (test_data,test_label),  argg = LoadData() # words, labels will be loaded
-	opt = ADAM(argg.lr)
-    epoc = 10
-
-    scanner, encoder = two_layers(argg)       # NB: scanner and encoder have to be created first. 
-    ps = params(scanner, encoder)   
-    loss(x,y) = Flux.logitcrossentropy(model(x, scanner, encoder), y)
-	@info "test the loss" loss(train_data[1], train_label[1])
-    testloss() = mean(Flux.logitcrossentropy.([model(x, scanner, encoder) for x in test_data], test_label))
-    testloss()
-	@info "trying again... "
-		# Ok - the problem is the dimension of the batch   
-		# this now runs.  There is only one batch, but that's fixable.  
 	for (x,y) in zip(train_data, train_label)  
 		#loss(x,y)
 		gs = Flux.gradient(ps) do 
@@ -237,26 +244,47 @@ function DoIt()
 		Flux.update!(opt, ps, gs)
 	end 
 
+		for (x,y) in zip(b[1],b[2]) # tuple elements?
+			gs = Flux.gradient(ps) do 
+				overall_loss(x,y)
+			end 
+			Flux.update!(opt, ps, gs)
+		end 
+"""
+function DoIt()
+    seed!(323) 
+	(train_data, train_label), (test_data,test_label),  argg = LoadData() # words, labels will be loaded
+	opt = ADAM(argg.lr)
+    epoc = 10
+    scanner, encoder = two_layers(argg)       
+    ps = params(scanner, encoder)   
+	@info "initial loss value: " overall_loss(train_data, train_label, scanner, encoder) 
+    testloss() = overall_loss(test_data, test_label, scanner, encoder)
+	testloss()
+	@info "trying again... "
 
-
-		[model(z, scanner, encoder) for z in x] # this line works
-		loss.(x,y)   # this line works 
-
-# still not working... 
-
-    loss(x,y) = Flux.logitcrossentropy(model(x, scanner, encoder), y)
-    for i = 1:10
-		Flux.train!(x->loss(x...), ps, train_data, opt) # , cb = throttle(evalcb, argg.throttle)
+		# This works but does not reduce the error.  
+	batched = DataBatch(train_data, train_label, 30) # returns 12 batches
+	ol(x,y) = overall_loss(x,y,scanner, encoder)
+	for i = 1:epoc
+		@info "Epoch" i
+		for b in batched # each of these is a tuple 
+			grads = Flux.gradient(ps) do 
+				ol(b...)
+			end 
+			Flux.update!(opt, ps, grads)
+			@show testloss()
+		end 
 	end 
-	t2 = Dates.format(now(),"yyyy_mm_dd")
-
-	# record the predictions 	
+	# record the predictions 
+	#=	
 	predictions = map(v -> v[2], findmax.(softmax.(submod.(test_data.data[1]))))
 	ix_labels = map( v-> convert(Int64, v.ix), test_data.data[2])
 	# save the predictions and the training error:
 	filename = "RNEMCL_"*string(nlayers)*"_l_"*string(argg.N)*"_n_"*string(epoc)*"_e"*t2
 	CSV.write("/home/beana1/emr_nlp/results/CE_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
 	CSV.write("/home/beana1/emr_nlp/results/CO_"*filename*".csv", Tables.table(hcat( ["predicted_class"; predictions], ["actual_label"; ix_labels] )) )
+	=#
 end 
 DoIt()
 
