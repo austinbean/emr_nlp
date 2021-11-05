@@ -231,6 +231,7 @@ debug sizes with this line:
 """
 function overall_loss(data, labels, scanner, encoder)
   logits = model(data, scanner, encoder)
+  println("length logits ", size(logits))
   Flux.logitcrossentropy(logits, labels)
 end
 
@@ -264,6 +265,7 @@ function DoIt()
 	@info "trying again... "
 
 		# This works but does not reduce the error.  
+		# I don't get it.  Suddenly overall_loss is really fast?  
 	batched = DataBatch(train_data, train_label, 30) # returns 12 batches
 	ol(x,y) = overall_loss(x,y,scanner, encoder)
 	for i = 1:epoc
@@ -276,6 +278,16 @@ function DoIt()
 			@show testloss()
 		end 
 	end 
+	# why does this run so fast????  
+	for i = 1:epoc 
+		grads = Flux.gradient(ps) do 
+			ol(train_data, train_label)
+		end 
+		Flux.update!(opt,ps, grads)
+		@show testloss()
+	end 
+
+
 	# record the predictions 
 	#=	
 	predictions = map(v -> v[2], findmax.(softmax.(submod.(test_data.data[1]))))
