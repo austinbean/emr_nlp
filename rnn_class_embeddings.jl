@@ -2,12 +2,7 @@
 
 #=
 
-which patients use formula, breast, both, no information.
-Simple task, but good proof of concept, perhaps.
-
-TODO - LSTM may not work if some of the inputs are Float64 
-Probably the embeddings are in Float64 form.   
-
+Classifying ranges of formula consumed.  
 =#
 
 module Run_Class_Embeddings
@@ -231,72 +226,58 @@ debug sizes with this line:
 """
 function overall_loss(data, labels, scanner, encoder)
   logits = model(data, scanner, encoder)
-  println("length logits ", size(logits))
   Flux.logitcrossentropy(logits, labels)
 end
 
 """
-
-	for (x,y) in zip(train_data, train_label)  
-		#loss(x,y)
-		gs = Flux.gradient(ps) do 
-			loss(x,y)
-		end 
-		Flux.update!(opt, ps, gs)
-	end 
-
-		for (x,y) in zip(b[1],b[2]) # tuple elements?
-			gs = Flux.gradient(ps) do 
-				overall_loss(x,y)
-			end 
-			Flux.update!(opt, ps, gs)
-		end 
+Main function 
 """
 function DoIt()
-    seed!(323) 
-	(train_data, train_label), (test_data,test_label),  argg = LoadData() # words, labels will be loaded
-	opt = ADAM(argg.lr)
+    seed!(323)
+    (train_data, train_label), (test_data, test_label), argg = LoadData() # words, labels will be loaded
+    opt = ADAM(argg.lr)
     epoc = 10
-    scanner, encoder = two_layers(argg)       
-    ps = params(scanner, encoder)   
-	@info "initial loss value: " overall_loss(train_data, train_label, scanner, encoder) 
+    scanner, encoder = two_layers(argg)
+    ps = params(scanner, encoder)
+    @info "initial loss value on training: ", overall_loss(train_data, train_label, scanner, encoder)
     testloss() = overall_loss(test_data, test_label, scanner, encoder)
-	testloss()
-	@info "trying again... "
+    @info "initial testloss(): ", testloss()
 
-		# This works but does not reduce the error.  
-		# I don't get it.  Suddenly overall_loss is really fast?  
-	batched = DataBatch(train_data, train_label, 30) # returns 12 batches
-	ol(x,y) = overall_loss(x,y,scanner, encoder)
-	for i = 1:epoc
-		@info "Epoch" i
-		for b in batched # each of these is a tuple 
-			grads = Flux.gradient(ps) do 
-				ol(b...)
-			end 
-			Flux.update!(opt, ps, grads)
-			@show testloss()
-		end 
-	end 
-	# why does this run so fast????  
-	for i = 1:epoc 
-		grads = Flux.gradient(ps) do 
-			ol(train_data, train_label)
-		end 
-		Flux.update!(opt,ps, grads)
-		@show testloss()
-	end 
+    batched = DataBatch(train_data, train_label, 30) # returns 12 batches
+    ol(x, y) = overall_loss(x, y, scanner, encoder)
+    err = Array{Float32,1}()
+    for i = 1:epoc
+        @info "Epoch" i
+        for b in batched # each of these is a tuple 
+            grads = Flux.gradient(ps) do
+                ol(b...)
+            end
+            Flux.update!(opt, ps, grads)
+            @show testloss()
+			push!(err, testloss())
+        end
+    end
 
+    # a little annoying to extract all of them.	
+    predictions = vcat(map(v -> [v[2] v[1]], findmax(softmax(model(test_data, scanner, encoder), dims = 1), dims = 1)[2])...)
+    # save the predictions and the training error:
+    date = Dates.format(now(), "yyyy mm dd")
+    time = Dates.format(now(), "HH:MM:SS")
+    layers = length(scanner) + 1
+    nodes = argg.N
+    error = minimum(err)
+    learning_rate = argg.lr
+    embed_len = argg.embed_len
+	epochs = epoc 
+    if isfile("./results_record.csv")
+        df = CSV.read("./results_record.csv", DataFrame)
+        push!(df, [date time layers nodes error learning_rate embed_len epochs])
+        CSV.write("./results_record.csv", Tables.table(df))
+    else # doesn't exist yet.
+        @warn "file not found - creating"
+        CSV.write("./results_record.csv", Tables.table([date time layers nodes error learning_rate embed_len epochs]); header = ["date", "time", "layers", "nodes", "error", "learning_rate", "embed_len", "epochs"])
+    end
 
-	# record the predictions 
-	#=	
-	predictions = map(v -> v[2], findmax.(softmax.(submod.(test_data.data[1]))))
-	ix_labels = map( v-> convert(Int64, v.ix), test_data.data[2])
-	# save the predictions and the training error:
-	filename = "RNEMCL_"*string(nlayers)*"_l_"*string(argg.N)*"_n_"*string(epoc)*"_e"*t2
-	CSV.write("/home/beana1/emr_nlp/results/CE_"*filename*".csv", Tables.table(hcat( ["training_epoch"; collect(1:length(loss_v))],["loss_value"; loss_v])))
-	CSV.write("/home/beana1/emr_nlp/results/CO_"*filename*".csv", Tables.table(hcat( ["predicted_class"; predictions], ["actual_label"; ix_labels] )) )
-	=#
 end 
 DoIt()
 
