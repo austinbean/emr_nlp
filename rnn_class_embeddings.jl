@@ -236,7 +236,7 @@ function DoIt()
     seed!(323)
     (train_data, train_label), (test_data, test_label), argg = LoadData() # words, labels will be loaded
     opt = ADAM(argg.lr)
-    epoc = 10
+    epoc = 2
     scanner, encoder = two_layers(argg)
     ps = params(scanner, encoder)
     @info "initial loss value on training: ", overall_loss(train_data, train_label, scanner, encoder)
@@ -258,26 +258,25 @@ function DoIt()
         end
     end
 
-    # a little annoying to extract all of them.	
+    # Not saving this yet	
     predictions = vcat(map(v -> [v[2] v[1]], findmax(softmax(model(test_data, scanner, encoder), dims = 1), dims = 1)[2])...)
     # save the predictions and the training error:
     date = Dates.format(now(), "yyyy mm dd")
     time = Dates.format(now(), "HH:MM:SS")
     layers = length(scanner) + 1
     nodes = argg.N
-    error = minimum(err)
+    error = convert(Float64,minimum(err))
     learning_rate = argg.lr
     embed_len = argg.embed_len
 	epochs = epoc 
-    if isfile("./results_record.csv")
-        df = CSV.read("./results_record.csv", DataFrame)
-        push!(df, [date time layers nodes error learning_rate embed_len epochs])
-        CSV.write("./results_record.csv", Tables.table(df))
-    else # doesn't exist yet.
-        @warn "file not found - creating"
-        CSV.write("./results_record.csv", Tables.table([date time layers nodes error learning_rate embed_len epochs]); header = ["date", "time", "layers", "nodes", "error", "learning_rate", "embed_len", "epochs"])
-    end
-
+	if isfile("./results_record.csv")
+		df = CSV.read("./results_record.csv", DataFrame; types=Dict(:date=>String, :time=>String, :error=>Float64, :learning_rate=>Float64)) # annoyingly reads some columns in special formats - this overrides
+		push!(df, [date time layers nodes error learning_rate embed_len epochs])
+		CSV.write("./results_record.csv", df)
+	else # doesn't exist yet.
+		@warn "file not found - creating"
+		CSV.write("./results_record.csv", Tables.table([date time layers nodes error learning_rate embed_len epochs]); header = ["date", "time", "layers", "nodes", "error", "learning_rate", "embed_len", "epochs"])
+	end
 end 
 DoIt()
 
