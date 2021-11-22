@@ -3,26 +3,29 @@
 #=
 
 Classifying ranges of formula consumed.  
+
+TODO: switch to the built-in Embeddings layer.  
 =#
 
 module Run_Class_Embeddings
 
-using CSV 
+using CSV
 using DataFrames
-using Query 
+using Query
 using Flux
 using Flux: onehot, onehotbatch, throttle, reset!
 using Statistics: mean
-using Random: shuffle, seed! 
+using Random: shuffle, seed!
 using Parameters: @with_kw
-using Plots 
-using Tables 
+using Plots
+using Tables
 using Embeddings
 using Embeddings: EmbeddingTable
 using Functors
-using Dates 
+using Dates
+using MLJ
 
- # /Users/austinbean/Desktop/programs/emr_nlp
+# /Users/austinbean/Desktop/programs/emr_nlp
 include("./punctuation_strip.jl")
 include("./s_split.jl")
 include("./rnn_embeddings.jl")
@@ -31,22 +34,23 @@ include("./labeler.jl")
 #include("/home/beana1/emr_nlp/punctuation_strip.jl")
 #include("/home/beana1/emr_nlp/s_split.jl")
 #include("/home/beana1/emr_nlp/rnn_embeddings.jl")
+#include("/home/beana1/emr_nlp/labeler.jl")
 
 
 
 @with_kw mutable struct Args
     lr::Float64 = 1e-3      # learning rate
-	inpt_dim::Int  = 813    # number of words.  size(allwords,1)
-	N::Int = 48            # Number of perceptrons in hidden layer - free parameter
-	throttle::Int = 1       # throttle timeout
+    inpt_dim::Int = 813    # number of words.  size(allwords,1)
+    N::Int = 128            # Number of perceptrons in hidden layer - free parameter
+    throttle::Int = 1       # throttle timeout
     test_d::Int = 600       # length of the testing set.
     classes::Int = 3        # how many classes are there?
-    emb_table::Embeddings.EmbeddingTable = EmbeddingTable(zeros(2,2), zeros(3)) # has to be initialized w/ something later
-    embed_len::Int = 50    # Length of vector per each word embedding
+    emb_table::Embeddings.EmbeddingTable = EmbeddingTable(zeros(2, 2), zeros(3)) # has to be initialized w/ something later
+    embed_len::Int = 75    # Length of vector per each word embedding
     test_len::Int = 100    # Number of unique words in test data 
     # TODO - likely deletable.  Is this used anywhere important?  Duplicates inpt_dim 
     word_list_len::Int = 0 # Total number of unique words
-    vocab::Array{String, 1} = []  #All the words in the training data
+    vocab::Array{String,1} = []  #All the words in the training data
 end
 
 """
@@ -56,13 +60,13 @@ long up to the length `dmax`.
 """
 function PadSentence(str, dmax)
     l = length(split(str))
-    pad = dmax - l 
+    pad = dmax - l
     if (pad > 0)
-        return str*repeat(" <blank>", pad)
-    else 
-        return str 
-    end 
-end 
+        return str * repeat(" <blank>", pad)
+    else
+        return str
+    end
+end
 
 
 """
@@ -76,53 +80,53 @@ df = DataFrame(diet_text=["hi", missing, "bye"], total_formula=[missing, 1, 2])
 # should be ["bye", 2] and it is.  
 """
 function LoadData()
-	seed!(0) # for shuffle
-		# Load the text
-	xfile = CSV.read("/Users/austinbean/Desktop/diet_local/formula_subset.csv", DataFrame);	 
-	#	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
-		# Shuffle DataFrame rows, making a copy  
-	xfile = xfile[shuffle(1:size(xfile, 1)),:]
-		# this filter must check whether :diet_text is not missing AND whether :total_formula is not missing.  
-	xfile = filter(x-> (!ismissing(x[:diet_text])&(!ismissing(x[:total_formula])&(isa(x[:diet_text], String)))), xfile)
-		# then subset out words separately.  
-	num_sentences = size(xfile,1)
-	words = convert(Array{String,1}, xfile[!, :diet_text]);
-	words = string_cleaner.(words) ;	                                                # regex preprocessing to remove punctuation etc. 
-		# this is the longest single sentence.
-	mwords = maximum(length.(split.(words)))
-	words = PadSentence.(words, mwords)
-	words = map( x->x*" <EOS>", words) ;                                                # add <EOS> to the end of every sentence.
-	# pad the sentences to max length 
-	
-	# create an instance of the type
-	args = Args()
+    seed!(0) # for shuffle
+    # Load the text
+    xfile = CSV.read("/Users/austinbean/Desktop/diet_local/formula_subset.csv", DataFrame)
+    #	xfile = CSV.read("/home/beana1/emr_nlp/class_label.csv", DataFrame);
+    # Shuffle DataFrame rows, making a copy  
+    xfile = xfile[shuffle(1:size(xfile, 1)), :]
+    # this filter must check whether :diet_text is not missing AND whether :total_formula is not missing.  
+    xfile = filter(x -> (!ismissing(x[:diet_text]) & (!ismissing(x[:total_formula]) & (isa(x[:diet_text], String)))), xfile)
+    # then subset out words separately.  
+    num_sentences = size(xfile, 1)
+    words = convert(Array{String,1}, xfile[!, :diet_text])
+    words = string_cleaner.(words)                                                # regex preprocessing to remove punctuation etc. 
+    # this is the longest single sentence.
+    mwords = maximum(length.(split.(words)))
+    words = PadSentence.(words, mwords)
+    words = map(x -> x * " <EOS>", words)                                                # add <EOS> to the end of every sentence.
+    # pad the sentences to max length 
 
-    	#Load the  word embeddings and assign back to args
-    eTable = load_embeddings(GloVe)
+    # create an instance of the type
+    args = Args()
+
+    #Load the  word embeddings and assign back to args
+    eTable = load_embeddings(Word2Vec)
     args.emb_table = eTable
-    	# get the labels
-	labels = labeler(xfile[!,:total_formula])[:,2] 
-   		# collect all unique words to make 1-h vectors. 
-	allwords = [unique( reduce(vcat, s_split.(words)) ); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
-	nwords = size(allwords,1)                                                           # how many unique words are there?
-	args.inpt_dim = nwords                                                              # # of unique words is dimension of input to first layer.
-    args.vocab = allwords 
+    # get the labels
+    labels = labeler(xfile[!, :total_formula])[:, 2]
+    # collect all unique words to make 1-h vectors. 
+    allwords = [unique(reduce(vcat, s_split.(words))); "<UNK>"]                       # add an "<UNK>" symbol for unfamiliar words
+    nwords = size(allwords, 1)                                                           # how many unique words are there?
+    args.inpt_dim = nwords                                                              # # of unique words is dimension of input to first layer.
+    args.vocab = allwords
     e1 = Embed(allwords, args.embed_len, eTable)
-		# subset test/train	
-	test_ix = convert(Int64,floor(0.7*size(xfile,1)))
-	training_data = MakeData(args.embed_len, args.vocab, e1, words[1:test_ix])
-	test_data = MakeData(args.embed_len, args.vocab, e1, words[(test_ix+1):end])
+    # subset test/train	
+    test_ix = convert(Int64, floor(0.7 * size(xfile, 1)))
+    training_data = MakeData(args.embed_len, args.vocab, e1, words[1:test_ix])
+    test_data = MakeData(args.embed_len, args.vocab, e1, words[(test_ix+1):end])
 
-		# one-hot batch the labels, then subset test/train 
+    # one-hot batch the labels, then subset test/train 
     all_labels = [unique(labels); -1]                                                   # how many classes?
-    args.classes = size(all_labels,1)     
-    interim_labels = map( v-> Flux.onehot(v, all_labels, -1), labels)		
-	train_labels = reshape(interim_labels[1:test_ix],1, size(interim_labels[1:test_ix],1))
-	train_labels = hcat(train_labels...)
-	test_labels = reshape(interim_labels[(test_ix+1):end],1, size(interim_labels[(test_ix+1):end],1))
-	test_labels = hcat(test_labels...)
-	return (training_data, train_labels), (test_data, test_labels), args
-end 
+    args.classes = size(all_labels, 1)
+    interim_labels = map(v -> Flux.onehot(v, all_labels, -1), labels)
+    train_labels = reshape(interim_labels[1:test_ix], 1, size(interim_labels[1:test_ix], 1))
+    train_labels = hcat(train_labels...)
+    test_labels = reshape(interim_labels[(test_ix+1):end], 1, size(interim_labels[(test_ix+1):end], 1))
+    test_labels = hcat(test_labels...)
+    return (training_data, train_labels), (test_data, test_labels), args
+end
 
 """
 `MakeData`
@@ -139,43 +143,43 @@ also this needs to be a vector.  For this example [50 x 533]_(85x1)
 
 """
 function MakeData(embed_len, all_words, embed_layer, sentences)
-	num_sentences = length(sentences)
-    interim = embed_layer.(map( v -> Flux.onehotbatch(v, all_words, "<UNK>"), s_split.(sentences))) 		# this is just for readability - next line can be substituted for "interim" in subsequent 
-	to_reshape = vcat(interim...)
-	tens = reshape(to_reshape, (embed_len,num_sentences,:))
-	data = Vector{Matrix{Float32}}()
-	for i = 1:size(tens,3)
-		push!(data, tens[:,:,i])
-	end 
-	return data 
-end 
+    num_sentences = length(sentences)
+    interim = embed_layer.(map(v -> Flux.onehotbatch(v, all_words, "<UNK>"), s_split.(sentences))) # this is just for readability - next line can be substituted for "interim" in subsequent 
+    to_reshape = vcat(interim...)
+    tens = reshape(to_reshape, (embed_len, num_sentences, :))
+    data = Vector{Matrix{Float32}}()
+    for i = 1:size(tens, 3)
+        push!(data, tens[:, :, i])
+    end
+    return data
+end
 
 """
 DataBatch(train_data, train_label, 30)
 """
 function DataBatch(d, labels, batch_size)
-	num_sentences = size(d[1],2)
-	remainder = num_sentences%batch_size 
-	batches = num_sentences ÷ batch_size 
-	if remainder > 0 
-		batches += 1
-	end 
-	batched = Vector() # type Any...
-	for i = 1:batches 
-		ix_start = ((i-1)*batch_size+1)
-		ix_end = min((i*batch_size), num_sentences) # in case there is a remainder
-		tm_dat = Vector{typeof(d[1])}()
-		tm_lab = Vector{typeof(labels[:,1])}()
-		for k = 1:size(d,1) # 
-			push!(tm_dat, d[k][:,ix_start:ix_end])
-		end 
-		for j = ix_start:ix_end 
-			push!(tm_lab, labels[:,j])
-		end 
-		push!(batched, (tm_dat,hcat(tm_lab...)))
-	end 
-	return batched 
-end 
+    num_sentences = size(d[1], 2)
+    remainder = num_sentences % batch_size
+    batches = num_sentences ÷ batch_size
+    if remainder > 0
+        batches += 1
+    end
+    batched = Vector() # type Any...
+    for i = 1:batches
+        ix_start = ((i - 1) * batch_size + 1)
+        ix_end = min((i * batch_size), num_sentences) # in case there is a remainder
+        tm_dat = Vector{typeof(d[1])}()
+        tm_lab = Vector{typeof(labels[:, 1])}()
+        for k = 1:size(d, 1) # 
+            push!(tm_dat, d[k][:, ix_start:ix_end])
+        end
+        for j = ix_start:ix_end
+            push!(tm_lab, labels[:, j])
+        end
+        push!(batched, (tm_dat, hcat(tm_lab...)))
+    end
+    return batched
+end
 
 
 
@@ -186,8 +190,8 @@ Removed the Embed layer to help with data prep.
 function two_layers(args)
     scanner = Chain(LSTM(args.embed_len, args.N), LSTM(args.N, args.N))
     encoder = Dense(args.N, args.classes, identity)
-	return scanner, encoder 
-end 
+    return scanner, encoder
+end
 
 """
 `model`
@@ -210,13 +214,13 @@ model(test_d2, scanner, encoder)
 
 """
 function model(x, scanner, encoder)
-	reset!(scanner)                   # must be called before each new record
-	state = scanner(x[1]) 
-	for i=2:length(x)                 # this is explicit about the order
-		state = scanner(x[i])
-	end 
-	encoder(state)
-end 
+    reset!(scanner)                   # must be called before each new record
+    state = scanner(x[1])
+    for i = 2:length(x)                 # this is explicit about the order
+        state = scanner(x[i])
+    end
+    encoder(state)
+end
 
 """
 debug sizes with this line: 
@@ -225,8 +229,8 @@ debug sizes with this line:
   end
 """
 function overall_loss(data, labels, scanner, encoder)
-  logits = model(data, scanner, encoder)
-  Flux.logitcrossentropy(logits, labels)
+    logits = model(data, scanner, encoder)
+    Flux.logitcrossentropy(logits, labels)
 end
 
 """
@@ -238,7 +242,7 @@ function DoIt()
     opt = ADAM(argg.lr)
     epoc = 2
     scanner, encoder = two_layers(argg)
-    ps = params(scanner, encoder)
+    ps = Flux.params(scanner, encoder)
     @info "initial loss value on training: ", overall_loss(train_data, train_label, scanner, encoder)
     testloss() = overall_loss(test_data, test_label, scanner, encoder)
     @info "initial testloss(): ", testloss()
@@ -254,30 +258,36 @@ function DoIt()
             end
             Flux.update!(opt, ps, grads)
             @show testloss()
-			push!(err, testloss())
+            push!(err, testloss())
         end
     end
 
-    # Not saving this yet	
+    #  confusion matrix 	
     predictions = vcat(map(v -> [v[2] v[1]], findmax(softmax(model(test_data, scanner, encoder), dims = 1), dims = 1)[2])...)
+    # map one-hot labels back to numbers 
+    numerical_labels = map(v -> findmax(v)[2], eachcol(test_label))
     # save the predictions and the training error:
     date = Dates.format(now(), "yyyy mm dd")
     time = Dates.format(now(), "HH:MM:SS")
     layers = length(scanner) + 1
     nodes = argg.N
-    error = convert(Float64,minimum(err))
+    error = convert(Float64, minimum(err))
     learning_rate = argg.lr
     embed_len = argg.embed_len
-	epochs = epoc 
-	if isfile("./results_record.csv")
-		df = CSV.read("./results_record.csv", DataFrame; types=Dict(:date=>String, :time=>String, :error=>Float64, :learning_rate=>Float64)) # annoyingly reads some columns in special formats - this overrides
-		push!(df, [date time layers nodes error learning_rate embed_len epochs])
-		CSV.write("./results_record.csv", df)
-	else # doesn't exist yet.
-		@warn "file not found - creating"
-		CSV.write("./results_record.csv", Tables.table([date time layers nodes error learning_rate embed_len epochs]); header = ["date", "time", "layers", "nodes", "error", "learning_rate", "embed_len", "epochs"])
-	end
-end 
-DoIt()
+    epochs = epoc
+    if isfile("./results_record.csv")
+        df = CSV.read("./results_record.csv", DataFrame; types = Dict(:date => String, :time => String, :error => Float64, :learning_rate => Float64)) # annoyingly reads some columns in special formats - this overrides
+        push!(df, [date time layers nodes error learning_rate embed_len epochs])
+        CSV.write("./results_record.csv", df)
+    else # doesn't exist yet.
+        @warn "file not found - creating"
+        CSV.write("./results_record.csv", Tables.table([date time layers nodes error learning_rate embed_len epochs]); header = ["date", "time", "layers", "nodes", "error", "learning_rate", "embed_len", "epochs"])
+    end
+    return predictions, numerical_labels
+end
+predictions, numerical_labels = DoIt()
+# these don't print.  Better to just save and compare when all done. 
+ConfusionMatrix(perm = [1, 2, 3, 4, 5])(predictions[:, 2], numerical_labels)
+
 
 end # of module 
